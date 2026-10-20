@@ -1,0 +1,8 @@
+leave-crypto
+Copyright 2026 Leave Your Agent Inc.
+
+This product includes software that depends on:
+- swift-sodium and libsodium (ISC License)
+- Bouncy Castle (the Bouncy Castle License, an MIT-style licence)
+
+android/gradlew and android/gradle/wrapper/ are the Gradle Wrapper (Apache License 2.0, Gradle Inc.).

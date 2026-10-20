@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+android/.gradle/
+android/build/
+android/.kotlin/
+*.xcodeproj/xcuserdata/
+.DS_Store

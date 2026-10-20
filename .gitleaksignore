@@ -1,0 +1,11 @@
+# Test material only, never a key in use: the shared test vectors (vectors/v1.json, made for the
+# tests by the server's vector generator) and two literal strings in a Kotlin test. Each finding is
+# listed by its file and line, so anything new is still reported.
+android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoVectors.kt:generic-api-key:237
+android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoVectors.kt:generic-api-key:239
+android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoVectors.kt:generic-api-key:240
+vectors/v1.json:generic-api-key:73
+vectors/v1.json:generic-api-key:83
+vectors/v1.json:generic-api-key:93
+vectors/v1.json:generic-api-key:175
+vectors/v1.json:generic-api-key:209

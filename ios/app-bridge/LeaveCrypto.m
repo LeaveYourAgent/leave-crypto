@@ -1,0 +1,28 @@
+#import <React/RCTBridgeModule.h>
+
+// Registers the Swift LeaveCrypto module with React Native.
+@interface RCT_EXTERN_MODULE(LeaveCrypto, NSObject)
+RCT_EXTERN_METHOD(ensureShare:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(hasShare:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(accountProof:(NSString *)accountId message:(NSString *)message resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(wrapShareTo:(NSString *)recipientSpki info:(NSString *)info resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(acceptShare:(NSString *)wire info:(NSString *)info reason:(NSString *)reason accountId:(NSString *)accountId publicKey:(NSString *)publicKey resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(useAccount:(NSString *)accountId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(adoptLegacyShare:(NSString *)accountId publicKey:(NSString *)publicKey resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(accountPublicKey:(NSString *)accountId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(newRecordKey:(NSString *)type id:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(importShareWrappedDek:(NSString *)type id:(NSString *)id wire:(NSString *)wire resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(importPendingDek:(NSString *)type id:(NSString *)id wire:(NSString *)wire info:(NSString *)info accountId:(NSString *)accountId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(wrapDekTo:(NSString *)type id:(NSString *)id recipientSpki:(NSString *)recipientSpki info:(NSString *)info resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(encrypt:(NSString *)type id:(NSString *)id plaintext:(NSString *)plaintext resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(decrypt:(NSString *)type id:(NSString *)id wire:(NSString *)wire resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(encryptFile:(NSString *)type id:(NSString *)id srcPath:(NSString *)srcPath dstPath:(NSString *)dstPath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(openExport:(NSString *)zipPath dstPath:(NSString *)dstPath folder:(NSString *)folder keyTypes:(NSDictionary *)keyTypes resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(decryptFile:(NSString *)type id:(NSString *)id srcPath:(NSString *)srcPath dstPath:(NSString *)dstPath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(grant:(NSString *)sessionId serverSpki:(NSString *)serverSpki exp:(nonnull NSNumber *)exp records:(NSArray *)records resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(aliasKey:(NSString *)fromType fromId:(NSString *)fromId toType:(NSString *)toType toId:(NSString *)toId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(hasKey:(NSString *)type id:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(compareCode:(NSString *)key requestId:(NSString *)requestId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(forgetKeys:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(deleteShare:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+@end

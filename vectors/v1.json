@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "encoding": "base64url-nopad",
+  "generatedBy": "Leave's server code (its vector generator)",
+  "recordAead": [
+    {
+      "name": "strand",
+      "recordType": "strand",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NA",
+      "aad": "leave:v1:strand:01J8Z3V4Q6X7R2M9K5T0W1Y8NA",
+      "dek": "WIiooiu6tzSz8dtenSjNuu_b-5q3QJzOy0CPFwdsNws",
+      "nonce": "dAxxZsa4DOycTd3T",
+      "plaintext": "Q29va2llcyBhcmUgbXkgZ28tdG8gcHJlZ2FtZSBzbmFjay4",
+      "wire": "dAxxZsa4DOycTd3TE3-NcZIwlKkKNUOCrLAmhuyfTbYTeqL_LlgjXcljgvKvLqLVZYXiCndgqIkeavSOmIUB"
+    },
+    {
+      "name": "contract original",
+      "recordType": "contract",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+      "aad": "leave:v1:contract:01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+      "dek": "PWPbjBfNZMgjj2aOoIdPi7g-7zNEO_6dwKCgF5gFRVg",
+      "nonce": "TgLF2WfK6P9CZkKQ",
+      "plaintext": "JVBERi0xLjcgU21vb3RoaWUgU3BvdCBOSUwgYWdyZWVtZW50",
+      "wire": "TgLF2WfK6P9CZkKQ9_eP05IENpBHnMpBrDJhRSgmlSephRWHIdvsraBDsiTwu_UJah_nfCofCYaK-4wzPuAkLQ"
+    },
+    {
+      "name": "contract field",
+      "recordType": "contractField",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NC",
+      "aad": "leave:v1:contractField:01J8Z3V4Q6X7R2M9K5T0W1Y8NC",
+      "dek": "YinW19Fig14kOoKOGdRQLJejJkJl_2EVGI1uVX4IOYI",
+      "nonce": "T73UV9ztJmic6N5R",
+      "plaintext": "eyJ0ZXJtIjoiMTIgbW9udGhzIiwiZmxhZ3MiOltdfQ",
+      "wire": "T73UV9ztJmic6N5RfX0PuZ2HOlCXmVI6iSPvDIznpLBuHZ5D30ul_0bUD1R8O5Z8_LojF3rmtyc5l48"
+    },
+    {
+      "name": "file",
+      "recordType": "file",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8ND",
+      "aad": "leave:v1:file:01J8Z3V4Q6X7R2M9K5T0W1Y8ND",
+      "dek": "6T2EIO-eHKRHpPCmsz6BIzQLQqovZ78luqQxvI43s-Y",
+      "nonce": "gRrSFIe7ApcSmibR",
+      "plaintext": "bWVkaWEga2l0",
+      "wire": "gRrSFIe7ApcSmibRvRRcCnqXkkDv3zGIQdurITOyplcaNU9yAg"
+    },
+    {
+      "name": "embedding",
+      "recordType": "embedding",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NE",
+      "aad": "leave:v1:embedding:01J8Z3V4Q6X7R2M9K5T0W1Y8NE",
+      "dek": "tjyly27wywtK2tnGEZqJ7Ez-Cgv9UXJB6O-fWNv5ijM",
+      "nonce": "zPwIUY4wCXzAHHcu",
+      "plaintext": "AAECAw",
+      "wire": "zPwIUY4wCXzAHHcuLwiYB4mL59x6mIol5N8AaM0LZRA"
+    },
+    {
+      "name": "empty plaintext",
+      "recordType": "strand",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NF",
+      "aad": "leave:v1:strand:01J8Z3V4Q6X7R2M9K5T0W1Y8NF",
+      "dek": "9s1y9UOKc0Moi5i3oJvss_h23MOfEGzOPHC76ig5Jtg",
+      "nonce": "s9vyakch-gnajA6d",
+      "plaintext": "",
+      "wire": "s9vyakch-gnajA6dVC5A719_NjJHz1LGpDFUgA"
+    }
+  ],
+  "shareWrap": [
+    {
+      "name": "share wrap strand",
+      "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "recordType": "strand",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NA",
+      "wrapKey": "plkVtFLt8TTyKvo02fWrMQOvpyfTxJjmNMlBwYDnfK8",
+      "dek": "WIiooiu6tzSz8dtenSjNuu_b-5q3QJzOy0CPFwdsNws",
+      "nonce": "tqf7NBLy4hIYMGX7",
+      "wire": "tqf7NBLy4hIYMGX7Y0LnSnhgsjk2MPP-7thuXLLhUirSgozesyy2rqn-V3VGbrfAGBv3HRakrUbd0mFu"
+    },
+    {
+      "name": "share wrap contract original",
+      "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "recordType": "contract",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+      "wrapKey": "JAlGtDySp37gQtmtGul1NcmHqNH7TiYWgWGDZy-ExdQ",
+      "dek": "PWPbjBfNZMgjj2aOoIdPi7g-7zNEO_6dwKCgF5gFRVg",
+      "nonce": "BvK4-P63H4w6jZiy",
+      "wire": "BvK4-P63H4w6jZiyPfR89NHONQIpDW-Wb3m2y2uwAnQfN4CK3EtdjrPAZmdmqAy-2vaLw-xTE3-KeftS"
+    },
+    {
+      "name": "share wrap contract field",
+      "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "recordType": "contractField",
+      "recordId": "01J8Z3V4Q6X7R2M9K5T0W1Y8NC",
+      "wrapKey": "Gqv8QRKv9RErYk2_zSdp4akhDmqYSCj5BtDg36nYRR0",
+      "dek": "YinW19Fig14kOoKOGdRQLJejJkJl_2EVGI1uVX4IOYI",
+      "nonce": "Q2Oi8GxVdBjjSSRp",
+      "wire": "Q2Oi8GxVdBjjSSRptcSJrvtjlRDBUHAZDVBsEH-vQvj8KtQ4Z-lWH4jxv2xGb3UIxSGMuq0tz7nsfZaf"
+    }
+  ],
+  "accountKey": [
+    {
+      "name": "athlete account key",
+      "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "accountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+      "candidates": [
+        {
+          "counter": 0,
+          "output": "91ao4BUwBYr4iw0_xjxIRHSSWOq1Pkr_zXabZKbJMIE",
+          "accepted": true
+        }
+      ],
+      "privateScalar": "91ao4BUwBYr4iw0_xjxIRHSSWOq1Pkr_zXabZKbJMIE",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1azHgCPCGPXyYWWjrm2__E6v-zWaUJOEwOB9nxJnn-EpW3G1_t0rVgmLHk4LNGN3UKunaKtyVP6C2wSQ3ctqtw",
+      "publicKeyRaw": "BNWsx4Ajwhj18mFlo65tv_xOr_s1mlCThMDgfZ8SZ5_hKVtxtf7dK1YJix5OCzRjd1Crp2irclT-gtsEkN3Larc"
+    },
+    {
+      "name": "teammate account key",
+      "share": "88_EAVr4WWgz6Vxt4Ks1GOOEeqtftTqqzE1TdU9e208",
+      "accountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "candidates": [
+        {
+          "counter": 0,
+          "output": "ANg8ODCNkCDp2Eu6uuOqnhpcs4AWcZlPGX14e3WyDgE",
+          "accepted": true
+        }
+      ],
+      "privateScalar": "ANg8ODCNkCDp2Eu6uuOqnhpcs4AWcZlPGX14e3WyDgE",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+      "publicKeyRaw": "BNy1D3q1Z45_SF6J0N_c2lFE4p8cRV3bL89IP3oi59soT45FV81iQ-YrDwTcfH5AH10pLEJjTtc4lJHy59GfJ-Q"
+    }
+  ],
+  "hpke": [
+    {
+      "name": "contract DEK wrapped to the Teammate",
+      "recipientScalar": "ANg8ODCNkCDp2Eu6uuOqnhpcs4AWcZlPGX14e3WyDgE",
+      "recipientPublicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+      "info": "leave:v1:xwrap:01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+      "ephemeralIkm": "FaJ10bb3Md0aybrjYKDv7kztTiz-_raSvEAj6T_rcAU",
+      "plaintext": "PWPbjBfNZMgjj2aOoIdPi7g-7zNEO_6dwKCgF5gFRVg",
+      "wire": "BDDuVXDVbVfbDZxphU0ov18ZCdFJ3_xOn0HJYWIlP-r0A2L64TaKCWng6_9p5jYKssh4vqiRxVdbouQLOLFtY5sczPVujuQBOLvOnuof5hRs9tmAWEDKz91ipRlINh5SrqP3-vshj7w6k1fmZoVlVbA"
+    },
+    {
+      "name": "server-created thread DEK wrapped to the athlete account key (pending)",
+      "recipientScalar": "91ao4BUwBYr4iw0_xjxIRHSSWOq1Pkr_zXabZKbJMIE",
+      "recipientPublicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1azHgCPCGPXyYWWjrm2__E6v-zWaUJOEwOB9nxJnn-EpW3G1_t0rVgmLHk4LNGN3UKunaKtyVP6C2wSQ3ctqtw",
+      "info": "leave:v1:pending:01J8Z3V4Q6X7R2M9K5T0W1Y8TH",
+      "ephemeralIkm": "ApbE-15mYIG_Lak2jcpmI2rd8ZofdVzXWUPOaUdQy_A",
+      "plaintext": "DZ-nfuO696GplYbUSFoAfsviNoHdd2kZWOLjhbr2CfQ",
+      "wire": "BKb8wYqW63hJc_a9QDPan9b3R2ys1D6vZsgYvI2BQraCUP0VJrdWnquODbEtaj1vX9Fua9ZUbhucR4kXLqG2ergIqwx3x55jASESyanG4bX-BwLd6bfxWtRux2q5UyyHgwOPc_nGFWFBlJL0Ng9n1OU"
+    },
+    {
+      "name": "share wrapped to a new device",
+      "recipientScalar": "Z9HspKBMEhKifxH8AS91HnguXZha68gSoBjZmTVbnWA",
+      "recipientPublicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+      "info": "leave:v1:device-approve:01J8Z3V4Q6X7R2M9K5T0W1Y8AR",
+      "ephemeralIkm": "YM3NZmuzwpCVANahCHCW9m2WsTsFhyyU_YEuwbjFrJo",
+      "plaintext": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "wire": "BNxcUPZWJsRqe-b7VOg4rcET0-8Y8n9PVGIJrakM9LCae1iW7uqIONMcp0IWLHj3UFAV7j6EfRA6pjTI49w1YEbMNXBJR0si15g7VHd8gzjx2l-oB_8myC15V3sKIqmHbAEkljmwgvsvatnqmdD848g"
+    },
+    {
+      "name": "share wrapped to a new device agreement key",
+      "recipientScalar": "blyyWnLqneBpBZumX65TTZwdK6UXzVt5-StBRGNfAfI",
+      "recipientPublicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEObBhzdLxviV98fLBo8Caa1HeFimNkKwr-4yZPyl7Zby790szPJcrLehcNluafDPjD7PT6iRv1_MeDNijPXKj1w",
+      "info": "leave:v1:device-approve:01J8Z3V4Q6X7R2M9K5T0W1Y8AS",
+      "ephemeralIkm": "2Rxf4SmZZ9M_TgCqnf-D-MQpMbY6JA5KxF6VX6A4afM",
+      "plaintext": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "wire": "BGloWF7Sw360onmqFtqNIRRqynzp9nnIOXlqjUEAx3V_GHf0Aw_WLcP1lvvqa7zHLgsnDPG67yphQRq26jg47zDYS7eLbzwUrpb87hg2VJfuVaR1j290UdHM6dBYiXVIIAk2RGqweXyrh613oUzIlYI"
+    }
+  ],
+  "grant": [
+    {
+      "name": "app session grant",
+      "rsaPrivateKeyPkcs8": "MIIG_gIBADANBgkqhkiG9w0BAQEFAASCBugwggbkAgEAAoIBgQDCK2O-FBMbK2RPprp48gLSwGENwPhtoNDNFooOOwNYG6a56ADlkDxa7ySbxc4S7c46_2xVO2YCduwSTFWIaoiS4huW7KaCUL_Y0iRYYS-wFDQYTMVatHo-zKseV1bhVCbQlOB-GwHQBGCANe4NQdBWfOV-E6QHSkPVvRB7QolY4EQQMZFgaqXo3QBM-6xXHaRAV3lsA-sdfMMH3DH0a0obXV6K1KmSvqFGmCxKs-Q_BYeRT5cayFb-GF9JxNHmjGzZ-K3hU4XLo8wWR0myNqx7Okqj6WvpxrZiVDpY7u_f1fcrhEhd0JpC-ozcawA-1bWGizccigbJIurKDa2qeW0JbFcabZRPcQ15r3cbMDNNZXkQtM99WCWIz6Xp7Q0re7SokxHUUSdCV9WskuvTPUnBlm2fblcFIiipuiy3JFeZUBmfPjCc5Nhh4MqOLrX16smrju8M4PB2eI7D2WYuagIffOp7sFs2UR0Vi33YQF5swdASJ4oSu3GXzZrxXADKGXMCAwEAAQKCAYAHyO_4BpufGT96WhFb5aG4JXJx6x_xKH0QQl98PPpGjBIRN6-uUV9Tt6B2H__B9O4YO3Y_Ri3-2oArwHFYrAmYKgY4W0cJyCCimgcb0mzncfsf7LDbXb6qlrYkD0hlqTDgaAR5yeEDhnyZmo_vnbxNDp2wG_ivOiQ7uGRyxkyPcN5wIvluYWUP6XYO000qApkIfPlagh9Pg7_ZQgc9HEtQvlua1I_zJdiwsrID6yNMy47Ct4UAoLISmfn03gLnnw8947gVZpt5a0pJPuucTMtGuQbDvBvM9fOJIhO3Ry8PbvJlM_wGRrZ6Ch9JAqNPZKbs0hC4qkZQRg3kojSbgmsqPRxGwHt02g_cAzGdFXrcnVM96nrhRKVFdJ2PnwuRQVsYbxdyK-VBZk_QgTS9MFT8L_Q-1S-Hk1r3vooMvUbEn9LazgdWMgVy2OOrocKFq5hCD-iZbSKEqv_8Rdlbf-Xxr00xyrj0R1X-8vO_D2x7h-T7Rc5Q_DrUiplHYLlranECgcEA7Hi_FFmQby8nIyVcbU0tA9iLXG7bRBp6i_MHEl9HvRn_ey4lkXb4jcOn1Cg35_GftC-CZIBL2oTTNyTnNcjErbQaLRBsNH-QAS-zf2mfbngg2F1Ts3dvbVNiMWgljGmVHtuR5cTJ9uKpPhbWVx4e_C9O6kt4hLVWG-E7NZZXzi6QMxS4A0Kr9uQc7Q72iJJMRYscQrZ_p2YALOSG5x8K-x3pQeBU9Yn-FV94M12yQkUzKR-Mr6QYwdXpS2WzdHcXAoHBANI0VPOHfldkk_vwd50uSK5rEnxk50rRF0FGlBB1tUlkiJFvOwNEKcyJ4_yTu6HB_l-l84IBVYPrFRc0ub13OgulhU9DTHO6Hv94PXuEpORTbGcsQ-PM-n3R8MSAioePL4lZC8DcT4db9T9E-YsPZ-elCqOJrZjQB0qhs-KobjUw8S4Iwr1usEnyGwxFiNhtJsK15SHCZMk8HUFQh2JzPNLg4xyXrX8kWg2GSfV67__Q22w_Xlj7xgj_RZWOGBYqBQKBwQDE-PdBPjGfS4mwLujEauq6L2A2SGkAW4YEmRUk6pTZIZS7yH6mopD7lSRxBmc7HvtGneRhTrTgeo9teaHWHTwm7MR5ERrwx-jt9Avyb8rLu-iwEV0tOqloSXKbcQMF6NS79W2cFMWejsMm4uL7gi2RJt73LpJfCKWHZ59oTakqJ4MZ6YI1xQ11BCJMHJCixioeK3gI4feHOuGeg2UTk7oT3qBzrSdXt_AbYYDAWKWpqfappIwNqgStQT-o_Df1JVUCgcAJVje7xXXwLdCA7VJy0d56mNjuW5EGerkctiTXglL2GpgSVa16XKm6oxlUW7-G1NYWq4lgaezBekyqhjYF22jhoY2FUsjvjwHXeSDJ_r9QQQBcqNOvJ6istAmMwOTmVo7W-_SQsXh627POBqNK8Pk9idAqKXBjjEH2p64U0ERs6mqcD9mOjn8YGb_n0KLeciK5nVi7IiZV5eyqvQf2cIXwG_sahwY20oeJeECKvdYxN7a3XS00qKJIPgZ6OSCKw30CgcEAqpLoibNwajPYj79d_Y0oAhbMQ3m4VrofCUlXc-a7am1PF_xIXiDt-RoJzahzB14Jc-EUyeaNGmMp4Te3wlSB6soSbghQoJLhXe7ERWz6a3ZzK9stNHNbVfYBIXG-FU_oGSJXA3cnEQTtxaD39lcr4VnAfd9ziN4F8d9tPb-OIELlRR9gUv5vWZQCEQAl0ZgU7WaM0pvN4-7jcw9m1gst8RHC8yNkO0go2qVbjdBEPZOKA-S2LRkM8mDI__rcoKZ0",
+      "rsaPublicKeySpki": "MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAwitjvhQTGytkT6a6ePIC0sBhDcD4baDQzRaKDjsDWBumuegA5ZA8Wu8km8XOEu3OOv9sVTtmAnbsEkxViGqIkuIbluymglC_2NIkWGEvsBQ0GEzFWrR6PsyrHldW4VQm0JTgfhsB0ARggDXuDUHQVnzlfhOkB0pD1b0Qe0KJWOBEEDGRYGql6N0ATPusVx2kQFd5bAPrHXzDB9wx9GtKG11eitSpkr6hRpgsSrPkPwWHkU-XGshW_hhfScTR5oxs2fit4VOFy6PMFkdJsjasezpKo-lr6ca2YlQ6WO7v39X3K4RIXdCaQvqM3GsAPtW1hos3HIoGySLqyg2tqnltCWxXGm2UT3ENea93GzAzTWV5ELTPfVgliM-l6e0NK3u0qJMR1FEnQlfVrJLr0z1JwZZtn25XBSIoqbostyRXmVAZnz4wnOTYYeDKji619erJq47vDODwdniOw9lmLmoCH3zqe7BbNlEdFYt92EBebMHQEieKErtxl82a8VwAyhlzAgMBAAE",
+      "sessionId": "01J8Z3V4Q6X7R2M9K5T0W1Y8SS",
+      "sessionKey": "yh3Gk2E73AyoljsEELDQCTJYL9vEv8Qx2teXhnNj6h0",
+      "sealedSessionKey": "Nh8H4Av1IBDrisuyCHJs_a9o2PIxWEevut_d3SB_phfwvAJ9jVS6d9d72Wo7E3ShernTZiNKSDy_pTrCi-fdr7o15ZYz-Ds0IpFmiq43KgdDBSfksX-dP214VUFS2LNHmK55XOTyON-nj39I-4aBSoezhrkqXXn_dqttEBxTXzP5HgDfvl0J9UeFhw1XPAhTYsvoOfzTn4PkddVYFNYVDM-cyHiZsOoCl-iU7FykydM0OfmzDfNChVfg3LQUTr74N9ofkwNlV6BmILbQQptv_XEevmKd5uNpmNp_eBn15rDXB_25vA3V50d1L4Ms6LUiFSLM2v-CNwMLKmgaDIJAGm-WeEu3m1QFKyNrqZIv4CQRZSbl6tN_Q2J5k4u0Hk_xgMokaWUfujOCKK8iwLWX0AhHOBc56zqLf-qsBBL2_652wOIIwTeQSoRoRaR0IQM5otm9q8ga1uqbqNFBydgmeyfvKmLQiBKiUh-qiNXdBK9lnN8qZT1sgh9NlGXrHhVZ",
+      "records": [
+        {
+          "id": "01J8Z3V4Q6X7R2M9K5T0W1Y8NA",
+          "type": "strand",
+          "dek": "WIiooiu6tzSz8dtenSjNuu_b-5q3QJzOy0CPFwdsNws",
+          "nonce": "7Bpna4EKIsIhKwEr",
+          "aad": "leave:v1:grant:01J8Z3V4Q6X7R2M9K5T0W1Y8SS:01J8Z3V4Q6X7R2M9K5T0W1Y8NA",
+          "sealedDek": "7Bpna4EKIsIhKwErtD3KxjkRbi5gXKWwwPtHBAZ1z5F5I8mwWPkjc6s2-prg_N7e0XYrN2tqcNxu80sl"
+        },
+        {
+          "id": "01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+          "type": "contract",
+          "dek": "PWPbjBfNZMgjj2aOoIdPi7g-7zNEO_6dwKCgF5gFRVg",
+          "nonce": "P3ST_fUQCFUNz-ws",
+          "aad": "leave:v1:grant:01J8Z3V4Q6X7R2M9K5T0W1Y8SS:01J8Z3V4Q6X7R2M9K5T0W1Y8NB",
+          "sealedDek": "P3ST_fUQCFUNz-wsa6Hph9T0ArPFeboacMmJzcIxTwQ4wQmcm2nhvzQ0y4lvb0yEDfZLrcjIwmfPGOEy"
+        }
+      ]
+    }
+  ],
+  "recovery": [
+    {
+      "name": "recovery blob v1 (empty AAD)",
+      "recoveryCode": "K7Q2M9X4T6W1Z8R3N5P0V2C7H4JD",
+      "argon2id": {
+        "memoryKiB": 65536,
+        "iterations": 3,
+        "parallelism": 1,
+        "outputBytes": 32
+      },
+      "salt": "yXJ8YRp501tlLjchN9-_MQ",
+      "nonce": "kbAC2I-Ywqdhurd4",
+      "key": "zSP_dMMWIQ4En-39M6lmyhmOg25B6UeddUOTActTNmo",
+      "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+      "blob": "AclyfGEaedNbZS43ITffvzGRsALYj5jCp2G6t3jlYgZuZ_0uA6QU48yRpDUquqENRjsJ5H1WBTMzwZacXn6oK6VDLr37gEUcg1KP5KA"
+    }
+  ],
+  "signatures": [
+    {
+      "name": "X-Leave-Confirm key.revoke",
+      "kind": "confirm",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+      "message": "a2V5LnJldm9rZTAxSjhaM1Y0UTZYN1IyTTlLNVQwVzFZOEFBMTc5MDAwMDAwMA",
+      "signatureRaw": "X-IMtqrStN9yU0ci5SwdwVigtlGmCbTRNnvTJXc1A97zfCihJODAptvYlO7972UsXos2CQNnAquWM1hqP4IkxA",
+      "signatureDer": "MEUCIGx4EJJFEg-yoikMVkNiwFrskj0n-ud5TEwvSYTSdxiXAiEAwUbS3HGm6EoGb83M5d8sLDQq-RePO6nBB1ff_OJyvsU"
+    },
+    {
+      "name": "activation proof",
+      "kind": "activation",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1azHgCPCGPXyYWWjrm2__E6v-zWaUJOEwOB9nxJnn-EpW3G1_t0rVgmLHk4LNGN3UKunaKtyVP6C2wSQ3ctqtw",
+      "message": "MDFKOFozVjRRNlg3UjJNOUs1VDBXMVk4RFYwMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQQ",
+      "signatureRaw": "qg6EUUtAU68ytmxLeTZvgv2PZGuROoiO92rbZ8wC5KqarViZ2qwCDQK3iSTI5hsKmhzaIgIey33RPhkSybVRKw",
+      "signatureDer": "MEUCIQCRFJ1eu_F21Z9epl_XlQsN1hDG-9b4x-sKS3DHFtdz1gIgZovt29fRUe2XR1zp-PFelxxTvQKbcy0DXs99N2LUIAM"
+    },
+    {
+      "name": "device approval",
+      "kind": "deviceApproval",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPq_0-uwroXzs5Ssmd_RdpB62LbPLR-W64SMwB_VW-Hz-7tyECzoM1Mh-AIIcV--hcQQAmpEgGxN9xaJAREUQsg",
+      "message": "MDFKOFozVjRRNlg3UjJNOUs1VDBXMVk4QVIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASheDwJFCrOMMu1xxD0ab-yTT96Pb3HNpHP2DR-JldgtYJx1NSnCCpADLwydTXwGjgttWZ3xBFxjTfQbBxoeAzV",
+      "signatureRaw": "MYZi6w__As07HBdFXQqNOwd7Poh0X66_3QJR6r_D54ifsvmsBChgpvYJVgnQ7eeVvH2yKNFsPUsBZMXULvfGNQ",
+      "signatureDer": "MEYCIQCPy5IN51SfeStUPlJXVwVakYREYqiJv60fpHaN5yUaSAIhAKFXdDOXMgqgRnp1MjoZtAS29kKTcIp52dOaUKcXtk07"
+    },
+    {
+      "name": "device approval with agreement key",
+      "kind": "deviceApproval",
+      "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPq_0-uwroXzs5Ssmd_RdpB62LbPLR-W64SMwB_VW-Hz-7tyECzoM1Mh-AIIcV--hcQQAmpEgGxN9xaJAREUQsg",
+      "message": "MDFKOFozVjRRNlg3UjJNOUs1VDBXMVk4QVMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASheDwJFCrOMMu1xxD0ab-yTT96Pb3HNpHP2DR-JldgtYJx1NSnCCpADLwydTXwGjgttWZ3xBFxjTfQbBxoeAzVMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEObBhzdLxviV98fLBo8Caa1HeFimNkKwr-4yZPyl7Zby790szPJcrLehcNluafDPjD7PT6iRv1_MeDNijPXKj1w",
+      "signatureRaw": "XZbYm52B-UApGvSfVbMdbsNpQJnPbGxhjxr1URX1w6KJ1JXtue5seGJzDDQeAHfIS5X3xCbpASRsS3LmPxidaQ",
+      "signatureDer": "MEYCIQCDZ2HyOyEIeJ2Oo0wXdP6ai8c0E1mus4DNJCQm3Sc1ygIhAOJiLSc8eJJPZEOrHb12VOsgjhzicovTdikH5cDOSbAI"
+    }
+  ]
+}
