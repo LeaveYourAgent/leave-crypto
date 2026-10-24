@@ -49,6 +49,17 @@ export async function sealGrant(records: { id: string; type: RecordType }[], ttl
   return { body: JSON.parse(g.body) as Record<string, unknown>, exp };
 }
 
+/**
+ * 1.3, Talk's key requests: one item's grant in the X-Leave-Grant form, sealed to the server's key
+ * and not registered as the turn's grant, for POST /talk/keys. It lives at most `ttlSeconds` (never
+ * past the session).
+ */
+export async function sealHeader(records: { id: string; type: RecordType }[], ttlSeconds: number): Promise<string> {
+  const s = await openSession();
+  const exp = Math.min(s.exp, Math.floor(Date.now() / 1000) + ttlSeconds);
+  return (await crypto.grant(s.sessionId, s.serverPublicKey, exp, records)).header;
+}
+
 export const grants = {
   /**
    * The X-Leave-Grant header for these records, registering a new grant when needed.
