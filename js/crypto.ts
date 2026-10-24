@@ -8,7 +8,7 @@ import { tokenStore } from './tokens';
  * padding, as everywhere in the API.
  */
 
-export type RecordType = 'strand' | 'contract' | 'contractField' | 'file' | 'embedding' | 'thread' | 'pitch' | 'receipt' | 'export';
+export type RecordType = 'strand' | 'contract' | 'contractField' | 'contractMarks' | 'file' | 'embedding' | 'thread' | 'pitch' | 'receipt' | 'export';
 
 type NativeCrypto = {
   useAccount?(accountId: string | null): Promise<boolean>;
