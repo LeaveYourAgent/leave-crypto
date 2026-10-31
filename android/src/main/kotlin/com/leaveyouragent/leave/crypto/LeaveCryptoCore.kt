@@ -259,6 +259,41 @@ object LeaveCryptoCore {
   fun sealDek(sessionKey: ByteArray, sessionId: String, recordId: String, dek: ByteArray, nonce: ByteArray? = null): ByteArray =
       seal(sessionKey, dek, grantAad(sessionId, recordId), nonce)
 
+  // Session grant v2 (grantV2, bound to the server's key version)
+
+  private const val GRANT_FIELD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-"
+
+  /** What a field of a v2 grant may hold: the AAD joins the fields with ':', so none may carry one. */
+  fun grantFieldOk(s: String): Boolean = s.isNotEmpty() && s.all { it in GRANT_FIELD_CHARS }
+
+  /**
+   * Refuses a v2 grant before anything is sealed: a field outside the set, a use other than app or
+   * mcp, or an exp that is not a positive whole number of seconds.
+   */
+  fun checkGrantV2(ticket: String, keyVersion: String, exp: Long, use: String, records: List<Pair<String, String>>) {
+    if (!grantFieldOk(ticket) || !grantFieldOk(keyVersion)) throw Failure("grant_field: ticket or keyVersion")
+    if (use != "app" && use != "mcp") throw Failure("grant_field: use")
+    if (exp <= 0) throw Failure("grant_field: exp")
+    if (records.any { (id, type) -> !grantFieldOk(id) || !grantFieldOk(type) }) throw Failure("grant_field: record")
+  }
+
+  /** Every field the server checks is in the AAD: a changed key version, exp, use, record type or id fails to open. */
+  fun grantAadV2(ticket: String, keyVersion: String, exp: Long, use: String, recordType: String, recordId: String): ByteArray =
+      utf8("leave:v2:grant:$ticket:$keyVersion:$exp:$use:$recordType:$recordId")
+
+  fun sealDekV2(sessionKey: ByteArray, ticket: String, keyVersion: String, exp: Long, use: String, recordType: String, recordId: String, dek: ByteArray, nonce: ByteArray? = null): ByteArray =
+      seal(sessionKey, dek, grantAadV2(ticket, keyVersion, exp, use, recordType, recordId), nonce)
+
+  /**
+   * The v2 body in its fixed key order: v, ticket, keyVersion, sealedSessionKey, exp, use, records
+   * (each id, type, sealedDek). No sessionId: the ticket carries it. The fields were checked by
+   * checkGrantV2, so none needs escaping.
+   */
+  fun grantBodyV2(ticket: String, keyVersion: String, sealedSessionKey: ByteArray, exp: Long, use: String, records: List<Triple<String, String, ByteArray>>): String {
+    val items = records.joinToString(",") { (id, type, sealed) -> "{\"id\":\"$id\",\"type\":\"$type\",\"sealedDek\":\"${base64url(sealed)}\"}" }
+    return "{\"v\":2,\"ticket\":\"$ticket\",\"keyVersion\":\"$keyVersion\",\"sealedSessionKey\":\"${base64url(sealedSessionKey)}\",\"exp\":$exp,\"use\":\"$use\",\"records\":[$items]}"
+  }
+
   // Signatures (signatures)
 
   private val p256: ECParameterSpec =

@@ -167,6 +167,25 @@ class LeaveCryptoModule(context: ReactApplicationContext) : ReactContextBaseJava
         }
       }
 
+  /** A v2 grant, `{ body, header }` as `grant` (see LeaveKeys.grantV2). */
+  @ReactMethod
+  fun grantV2(ticket: String, keyVersion: String, serverSpki: String, exp: Double, use: String, records: ReadableArray, promise: Promise) =
+      answer(promise) {
+        val wanted =
+            (0 until records.size()).mapNotNull { i ->
+              val record = records.getMap(i)
+              val id = record?.getString("id")
+              val type = record?.getString("type")
+              if (id != null && type != null) id to type else null
+            }
+        if (exp != Math.floor(exp)) throw LeaveCryptoCore.Failure("grant_field: exp")
+        val body = keys.grantV2(ticket, keyVersion, bytes(serverSpki, "Public key is malformed."), exp.toLong(), use, wanted)
+        Arguments.createMap().apply {
+          putString("body", body)
+          putString("header", core.base64url(body.toByteArray(Charsets.UTF_8)))
+        }
+      }
+
   @ReactMethod
   fun aliasKey(fromType: String, fromId: String, toType: String, toId: String, promise: Promise) =
       answer(promise) { keys.aliasKey(fromType, fromId, toType, toId); true }

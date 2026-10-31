@@ -179,4 +179,18 @@ class LeaveKeys(
         }
     return "{\"sessionId\":${core.jsonString(sessionId)},\"sealedSessionKey\":\"${core.base64url(sealedSessionKey)}\",\"exp\":$exp,\"records\":[$items]}"
   }
+
+  /**
+   * A v2 grant, for a server that gave a ticket. The body's key order is v, ticket,
+   * keyVersion, sealedSessionKey, exp, use, records (no sessionId: the ticket carries it). Every
+   * field is checked before anything is sealed.
+   */
+  fun grantV2(ticket: String, keyVersion: String, serverSpki: ByteArray, exp: Long, use: String, records: List<Pair<String, String>>): String {
+    val core = LeaveCryptoCore
+    core.checkGrantV2(ticket, keyVersion, exp, use, records)
+    val sessionKey = core.randomBytes(32)
+    val sealedSessionKey = core.rsaSeal(serverSpki, sessionKey)
+    val sealed = records.map { (id, type) -> Triple(id, type, core.sealDekV2(sessionKey, ticket, keyVersion, exp, use, type, id, dek(type, id))) }
+    return core.grantBodyV2(ticket, keyVersion, sealedSessionKey, exp, use, sealed)
+  }
 }

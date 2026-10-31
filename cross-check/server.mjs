@@ -57,8 +57,19 @@ if (phase === 'make') {
     const granted = made.grant.records[0];
     const dek = open(sessionKey, b(granted.sealedDek), Buffer.from(`leave:v1:grant:${made.grant.sessionId}:${granted.id}`));
     same(open(dek, b(made.record.wire), aad(made.record.type, made.record.id)), b(made.record.plaintext), `${phone}'s record under its granted key`);
-    checked.push(`${phone}: account key, proof, grant, record`);
-    console.log(`server   verified ${phone}'s proof and opened ${phone}'s record through its grant`);
+    // The v2 grant, its body in the fixed key order, opened with the v2 AAD; with
+    // exp + 1 the same sealed key does not open.
+    const v2 = JSON.parse(made.grantV2);
+    if (Object.keys(v2).join(',') !== 'v,ticket,keyVersion,sealedSessionKey,exp,use,records') throw new Error(`server: ${phone}'s v2 body key order`);
+    const sessionKey2 = privateDecrypt({ key: serverPrivateKey, oaepHash: 'sha256', padding: constants.RSA_PKCS1_OAEP_PADDING }, b(v2.sealedSessionKey));
+    const r2 = v2.records[0];
+    const aad2 = (exp) => Buffer.from(`leave:v2:grant:${v2.ticket}:${v2.keyVersion}:${exp}:${v2.use}:${r2.type}:${r2.id}`);
+    same(open(open(sessionKey2, b(r2.sealedDek), aad2(v2.exp)), b(made.record.wire), aad(made.record.type, made.record.id)), b(made.record.plaintext), `${phone}'s record under its v2 grant`);
+    let opened = true;
+    try { open(sessionKey2, b(r2.sealedDek), aad2(v2.exp + 1)); } catch { opened = false; }
+    if (opened) throw new Error(`server: ${phone}'s v2 grant opened with exp + 1`);
+    checked.push(`${phone}: account key, proof, grant, grant v2, record`);
+    console.log(`server   verified ${phone}'s proof and opened ${phone}'s record through its grant and its v2 grant (exp + 1 refused)`);
   }
   writeFileSync(join(dir, 'server.2.json'), JSON.stringify({ maker: 'server', checked }));
 } else {

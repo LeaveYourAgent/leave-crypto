@@ -29,6 +29,8 @@ type NativeCrypto = {
   decryptFile(type: RecordType, id: string, srcPath: string, dstPath: string): Promise<{ sizeBytes: number }>;
   openExport(zipPath: string, dstPath: string, folder: string, keyTypes: Record<string, string>): Promise<{ opened: number; unopened: number }>;
   grant(sessionId: string, serverSpki: string, exp: number, records: { id: string; type: RecordType }[]): Promise<{ body: string; header: string }>;
+  /** Absent in native builds made before grant v2. */
+  grantV2?(ticket: string, keyVersion: string, serverSpki: string, exp: number, use: 'app' | 'mcp', records: { id: string; type: RecordType }[]): Promise<{ body: string; header: string }>;
   aliasKey(fromType: RecordType, fromId: string, toType: RecordType, toId: string): Promise<boolean>;
   hasKey(type: RecordType, id: string): Promise<boolean>;
   compareCode?(key: string, requestId: string): Promise<string>;
@@ -94,6 +96,14 @@ export const crypto = {
   /** The export archive opened into a plain zip with the keys already imported (the app's export code, not in this repository). */
   openExport: (zipPath: string, dstPath: string, folder: string, keyTypes: Record<string, string>) => must().openExport(zipPath, dstPath, folder, keyTypes),
   grant: (sessionId: string, serverSpki: string, exp: number, records: { id: string; type: RecordType }[]) => must().grant(sessionId, serverSpki, exp, records),
+  /** The v2 grant, bound to the server's ticket and key version. Throws where the native build has none. */
+  grantV2: (ticket: string, keyVersion: string, serverSpki: string, exp: number, use: 'app' | 'mcp', records: { id: string; type: RecordType }[]) => {
+    const n = must();
+    if (!n.grantV2) {
+      throw new Error('This build has no v2 grant.');
+    }
+    return n.grantV2(ticket, keyVersion, serverSpki, exp, use, records);
+  },
   /** The same DEK under another record name (Markdown upload, contractField). */
   aliasKey: (fromType: RecordType, fromId: string, toType: RecordType, toId: string) => must().aliasKey(fromType, fromId, toType, toId),
   hasKey: (type: RecordType, id: string) => must().hasKey(type, id),

@@ -35,6 +35,7 @@ func random(_ n: Int) -> Data { Data((0..<n).map { _ in UInt8.random(in: 0...255
 
 let common = try read("common.json")
 let share = b(common["share"]), accountId = common["accountId"] as! String
+let ticket = common["ticket"] as! String, keyVersion = common["keyVersion"] as! String, exp = common["exp"] as! Int
 let accountKey = try C.accountAgreementKey(share: share, accountId: accountId)
 
 switch phase {
@@ -57,6 +58,9 @@ case "make":
     "grant": ["sessionId": sessionId,
               "sealedSessionKey": u(try C.rsaSeal(serverSpki: b(common["rsaPublicKeySpki"]), sessionKey: sessionKey)),
               "records": [["id": id, "type": type, "sealedDek": u(try C.sealDek(sessionKey: sessionKey, sessionId: sessionId, recordId: id, dek: dek))]]],
+    // The v2 grant's body, as the app sends it.
+    "grantV2": C.grantBodyV2(ticket: ticket, keyVersion: keyVersion, sealedSessionKey: try C.rsaSeal(serverSpki: b(common["rsaPublicKeySpki"]), sessionKey: sessionKey), exp: exp, use: "app",
+                             records: [(id: id, type: type, sealedDek: try C.sealDekV2(sessionKey: sessionKey, ticket: ticket, keyVersion: keyVersion, exp: exp, use: "app", recordType: type, recordId: id, dek: dek))]),
   ])
   try write("\(me).private.json", ["deviceScalar": u(device.rawRepresentation)])
   print("iPhone   made a record, a proof and a grant")

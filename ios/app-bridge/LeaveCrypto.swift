@@ -26,6 +26,7 @@ import Security
 ///   encryptFile(type, id, srcPath, dstPath)          → { sha256, sizeBytes }
 ///   decryptFile(type, id, srcPath, dstPath)          → { sizeBytes }
 ///   grant(sessionId, serverSpki, exp, records)       → { body, header }
+///   grantV2(ticket, keyVersion, serverSpki, exp, use, records) → { body, header } (grant v2)
 ///   aliasKey(fromType, fromId, toType, toId)         → true   (same DEK, another AAD)
 ///   hasKey(type, id)                                 → bool
 ///   compareCode(key, requestId)                      → "482913"   (new phone and approving phone)
@@ -336,6 +337,28 @@ final class LeaveCrypto: NSObject, RCTBridgeModule {
         items.append("{\"id\":\(Self.jsonString(id)),\"type\":\(Self.jsonString(type)),\"sealedDek\":\"\(LeaveCryptoCore.base64url(sealed))\"}")
       }
       let body = "{\"sessionId\":\(Self.jsonString(sessionId)),\"sealedSessionKey\":\"\(LeaveCryptoCore.base64url(sealedSessionKey))\",\"exp\":\(exp.intValue),\"records\":[\(items.joined(separator: ","))]}"
+      resolve(["body": body, "header": LeaveCryptoCore.base64url(Data(body.utf8))])
+    } catch { reject("crypto", error.localizedDescription, error) }
+  }
+
+  /// A v2 grant, for a server that gave a ticket. The same shape as `grant`; the body's
+  /// key order is v, ticket, keyVersion, sealedSessionKey, exp, use, records (no sessionId: the
+  /// ticket carries it). Every field is checked before anything is sealed.
+  @objc func grantV2(_ ticket: String, keyVersion: String, serverSpki: String, exp: NSNumber, use: String, records: [[String: String]], resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+    do {
+      let wanted = records.compactMap { r -> (id: String, type: String)? in
+        guard let id = r["id"], let type = r["type"] else { return nil }
+        return (id: id, type: type)
+      }
+      guard exp.doubleValue == exp.doubleValue.rounded() else { throw LeaveCryptoCore.Failure.grantField("grant_field: exp") }
+      try LeaveCryptoCore.checkGrantV2(ticket: ticket, keyVersion: keyVersion, exp: exp.intValue, use: use, records: wanted)
+      guard let spki = LeaveCryptoCore.fromBase64url(serverSpki) else { throw LeaveCryptoCore.Failure.badPublicKey }
+      let sessionKey = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+      let sealedSessionKey = try LeaveCryptoCore.rsaSeal(serverSpki: spki, sessionKey: sessionKey)
+      let sealed = try wanted.map { r in
+        (id: r.id, type: r.type, sealedDek: try LeaveCryptoCore.sealDekV2(sessionKey: sessionKey, ticket: ticket, keyVersion: keyVersion, exp: exp.intValue, use: use, recordType: r.type, recordId: r.id, dek: try Self.dek(r.type, r.id)))
+      }
+      let body = LeaveCryptoCore.grantBodyV2(ticket: ticket, keyVersion: keyVersion, sealedSessionKey: sealedSessionKey, exp: exp.intValue, use: use, records: sealed)
       resolve(["body": body, "header": LeaveCryptoCore.base64url(Data(body.utf8))])
     } catch { reject("crypto", error.localizedDescription, error) }
   }

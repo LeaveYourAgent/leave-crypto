@@ -60,7 +60,15 @@ class LeaveCryptoCrossCheck {
                 .put("proof", JSONObject().put("message", message).put("signatureRaw", u(core.sign(scalar, utf8(message)))))
                 .put("grant", JSONObject().put("sessionId", sessionId)
                     .put("sealedSessionKey", u(core.rsaSeal(common.bytes("rsaPublicKeySpki"), sessionKey)))
-                    .put("records", JSONArray().put(JSONObject().put("id", id).put("type", type).put("sealedDek", u(core.sealDek(sessionKey, sessionId, id, dek)))))))
+                    .put("records", JSONArray().put(JSONObject().put("id", id).put("type", type).put("sealedDek", u(core.sealDek(sessionKey, sessionId, id, dek))))))
+                // The v2 grant's body, as the app sends it.
+                .put("grantV2", run {
+                  val ticket = common.getString("ticket")
+                  val keyVersion = common.getString("keyVersion")
+                  val exp = common.getLong("exp")
+                  core.grantBodyV2(ticket, keyVersion, core.rsaSeal(common.bytes("rsaPublicKeySpki"), sessionKey), exp, "app",
+                      listOf(Triple(id, type, core.sealDekV2(sessionKey, ticket, keyVersion, exp, "app", type, id, dek))))
+                }))
         write("$me.private.json", JSONObject().put("deviceScalar", u(deviceScalar)))
         println("Android  made a record, a proof and a grant")
       }

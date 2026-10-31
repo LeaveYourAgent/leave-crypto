@@ -20,6 +20,7 @@ RCT_EXTERN_METHOD(encryptFile:(NSString *)type id:(NSString *)id srcPath:(NSStri
 RCT_EXTERN_METHOD(openExport:(NSString *)zipPath dstPath:(NSString *)dstPath folder:(NSString *)folder keyTypes:(NSDictionary *)keyTypes resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(decryptFile:(NSString *)type id:(NSString *)id srcPath:(NSString *)srcPath dstPath:(NSString *)dstPath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(grant:(NSString *)sessionId serverSpki:(NSString *)serverSpki exp:(nonnull NSNumber *)exp records:(NSArray *)records resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(grantV2:(NSString *)ticket keyVersion:(NSString *)keyVersion serverSpki:(NSString *)serverSpki exp:(nonnull NSNumber *)exp use:(NSString *)use records:(NSArray *)records resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(aliasKey:(NSString *)fromType fromId:(NSString *)fromId toType:(NSString *)toType toId:(NSString *)toId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(hasKey:(NSString *)type id:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(compareCode:(NSString *)key requestId:(NSString *)requestId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)

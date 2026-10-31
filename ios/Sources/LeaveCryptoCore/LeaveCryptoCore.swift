@@ -18,6 +18,7 @@ enum LeaveCryptoCore {
     case badPublicKey
     case scalarOutOfRange
     case rsa(String)
+    case grantField(String)
 
     var errorDescription: String? {
       switch self {
@@ -26,6 +27,7 @@ enum LeaveCryptoCore {
       case .badPublicKey: return "Public key is malformed."
       case .scalarOutOfRange: return "Derived scalar is out of range."
       case .rsa(let m): return m
+      case .grantField(let m): return m
       }
     }
   }
@@ -176,6 +178,44 @@ enum LeaveCryptoCore {
 
   static func sealDek(sessionKey: Data, sessionId: String, recordId: String, dek: Data, nonce: Data? = nil) throws -> Data {
     try seal(key: sessionKey, plaintext: dek, aad: grantAad(sessionId: sessionId, recordId: recordId), nonce: nonce)
+  }
+
+  // MARK: - Session grant v2 (grantV2, bound to the server's key version)
+
+  private static let grantFieldChars = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-")
+
+  /// What a field of a v2 grant may hold: the AAD joins the fields with ':', so none may carry one.
+  static func grantFieldOk(_ s: String) -> Bool {
+    !s.isEmpty && s.allSatisfy { grantFieldChars.contains($0) }
+  }
+
+  /// Refuses a v2 grant before anything is sealed: a field outside the set, a use other than
+  /// app or mcp, or an exp that is not a positive whole number of seconds.
+  static func checkGrantV2(ticket: String, keyVersion: String, exp: Int, use: String, records: [(id: String, type: String)]) throws {
+    guard grantFieldOk(ticket), grantFieldOk(keyVersion) else { throw Failure.grantField("grant_field: ticket or keyVersion") }
+    guard use == "app" || use == "mcp" else { throw Failure.grantField("grant_field: use") }
+    guard exp > 0 else { throw Failure.grantField("grant_field: exp") }
+    for r in records where !grantFieldOk(r.id) || !grantFieldOk(r.type) {
+      throw Failure.grantField("grant_field: record")
+    }
+  }
+
+  /// Every field the server checks is in the AAD: a changed key version, exp, use, record type or
+  /// id fails to open.
+  static func grantAadV2(ticket: String, keyVersion: String, exp: Int, use: String, recordType: String, recordId: String) -> Data {
+    Data("leave:v2:grant:\(ticket):\(keyVersion):\(exp):\(use):\(recordType):\(recordId)".utf8)
+  }
+
+  static func sealDekV2(sessionKey: Data, ticket: String, keyVersion: String, exp: Int, use: String, recordType: String, recordId: String, dek: Data, nonce: Data? = nil) throws -> Data {
+    try seal(key: sessionKey, plaintext: dek, aad: grantAadV2(ticket: ticket, keyVersion: keyVersion, exp: exp, use: use, recordType: recordType, recordId: recordId), nonce: nonce)
+  }
+
+  /// The v2 body in its fixed key order: v, ticket, keyVersion, sealedSessionKey, exp, use, records
+  /// (each id, type, sealedDek). No sessionId: the ticket carries it. The fields were checked by
+  /// checkGrantV2, so none needs escaping.
+  static func grantBodyV2(ticket: String, keyVersion: String, sealedSessionKey: Data, exp: Int, use: String, records: [(id: String, type: String, sealedDek: Data)]) -> String {
+    let items = records.map { "{\"id\":\"\($0.id)\",\"type\":\"\($0.type)\",\"sealedDek\":\"\(base64url($0.sealedDek))\"}" }
+    return "{\"v\":2,\"ticket\":\"\(ticket)\",\"keyVersion\":\"\(keyVersion)\",\"sealedSessionKey\":\"\(base64url(sealedSessionKey))\",\"exp\":\(exp),\"use\":\"\(use)\",\"records\":[\(items.joined(separator: ","))]}"
   }
 
   // MARK: - Signatures (signatures)

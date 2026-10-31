@@ -121,6 +121,44 @@ final class LeaveCryptoTests: XCTestCase {
     }
   }
 
+  /// The v2 grant. The AAD and each sealed key are the vector's exact bytes, the body
+  /// and header too; every negative (a changed key version, exp, use, type, id or ticket) fails to open.
+  func testGrantV2() throws {
+    let c = try XCTUnwrap(cases("grantV2").first)
+    let ticket = try s(c, "ticket"), keyVersion = try s(c, "keyVersion"), use = try s(c, "use")
+    let exp = try XCTUnwrap(c["exp"] as? Int)
+    let sessionKey = try b(try s(c, "sessionKey"))
+    var sealed: [(id: String, type: String, sealedDek: Data)] = []
+    for r in try XCTUnwrap(c["records"] as? [[String: Any]]) {
+      let id = try s(r, "id"), type = try s(r, "type")
+      XCTAssertEqual(LeaveCryptoCore.grantAadV2(ticket: ticket, keyVersion: keyVersion, exp: exp, use: use, recordType: type, recordId: id), Data(try s(r, "aad").utf8))
+      let mine = try LeaveCryptoCore.sealDekV2(sessionKey: sessionKey, ticket: ticket, keyVersion: keyVersion, exp: exp, use: use, recordType: type, recordId: id, dek: try b(try s(r, "dek")), nonce: try b(try s(r, "nonce")))
+      XCTAssertEqual(LeaveCryptoCore.base64url(mine), try s(r, "sealedDek"))
+      sealed.append((id: id, type: type, sealedDek: mine))
+    }
+    let body = LeaveCryptoCore.grantBodyV2(ticket: ticket, keyVersion: keyVersion, sealedSessionKey: try b(try s(c, "sealedSessionKey")), exp: exp, use: use, records: sealed)
+    XCTAssertEqual(body, try s(c, "body"))
+    XCTAssertEqual(LeaveCryptoCore.base64url(Data(body.utf8)), try s(c, "header"))
+    let records = try XCTUnwrap(c["records"] as? [[String: Any]])
+    for n in try XCTUnwrap(c["negatives"] as? [[String: Any]]) {
+      let r = try XCTUnwrap(records.first { ($0["id"] as? String) == (n["recordId"] as? String) })
+      let name = try s(n, "name"), wire = try b(try s(r, "sealedDek")), aad = Data(try s(n, "aad").utf8)
+      XCTAssertThrowsError(try LeaveCryptoCore.open(key: sessionKey, wire: wire, aad: aad), name)
+    }
+  }
+
+  /// A v2 grant is refused before anything is sealed when a field could change the AAD's shape.
+  func testGrantV2Refuses() {
+    let ok = (ticket: "t2.abc.def", keyVersion: "1", exp: 1_793_370_900, use: "app")
+    XCTAssertNoThrow(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: ok.keyVersion, exp: ok.exp, use: ok.use, records: [(id: "01J8", type: "strand")]))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: "t2:x", keyVersion: ok.keyVersion, exp: ok.exp, use: ok.use, records: []))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: "", exp: ok.exp, use: ok.use, records: []))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: ok.keyVersion, exp: ok.exp, use: "web", records: []))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: ok.keyVersion, exp: 0, use: ok.use, records: []))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: ok.keyVersion, exp: ok.exp, use: ok.use, records: [(id: "a:b", type: "strand")]))
+    XCTAssertThrowsError(try LeaveCryptoCore.checkGrantV2(ticket: ok.ticket, keyVersion: ok.keyVersion, exp: ok.exp, use: ok.use, records: [(id: "01J8", type: "strand\n")]))
+  }
+
   /// The phone's own work for one unlock over many records, at 500 and 2,000 records, with no
   /// network in it: a key the server made is opened and wrapped to the share (once per record), a
   /// share-wrapped key is opened, and each key is sealed into a grant. The times are printed; the

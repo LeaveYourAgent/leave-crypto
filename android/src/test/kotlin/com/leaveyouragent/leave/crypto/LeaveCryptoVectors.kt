@@ -166,6 +166,50 @@ abstract class LeaveCryptoVectors {
     }
   }
 
+  /**
+   * The v2 grant. The AAD and each sealed key are the vector's exact bytes, the body
+   * and header too; every negative (a changed key version, exp, use, type, id or ticket) fails to open.
+   */
+  @Test
+  fun grantV2() {
+    val c = cases("grantV2").first()
+    val ticket = c.getString("ticket")
+    val keyVersion = c.getString("keyVersion")
+    val use = c.getString("use")
+    val exp = c.getLong("exp")
+    val sessionKey = c.bytes("sessionKey")
+    val records = c.getJSONArray("records").objects()
+    val sealed =
+        records.map { r ->
+          val id = r.getString("id")
+          val type = r.getString("type")
+          assertArrayEquals(r.getString("aad").utf8(), core.grantAadV2(ticket, keyVersion, exp, use, type, id))
+          val mine = core.sealDekV2(sessionKey, ticket, keyVersion, exp, use, type, id, r.bytes("dek"), r.bytes("nonce"))
+          assertEquals(r.getString("sealedDek"), core.base64url(mine))
+          Triple(id, type, mine)
+        }
+    val body = core.grantBodyV2(ticket, keyVersion, c.bytes("sealedSessionKey"), exp, use, sealed)
+    assertEquals(c.getString("body"), body)
+    assertEquals(c.getString("header"), core.base64url(body.toByteArray(Charsets.UTF_8)))
+    for (n in c.getJSONArray("negatives").objects()) {
+      val r = records.first { it.getString("id") == n.getString("recordId") }
+      assertThrows(n.getString("name"), Exception::class.java) { core.open(sessionKey, r.bytes("sealedDek"), n.getString("aad").utf8()) }
+    }
+  }
+
+  /** A v2 grant is refused before anything is sealed when a field could change the AAD's shape. */
+  @Test
+  fun grantV2Refuses() {
+    val one = listOf("01J8" to "strand")
+    core.checkGrantV2("t2.abc.def", "1", 1_793_370_900, "app", one)
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2:x", "1", 1_793_370_900, "app", one) }
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2.abc", "", 1_793_370_900, "app", one) }
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2.abc", "1", 1_793_370_900, "web", one) }
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2.abc", "1", 0, "app", one) }
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2.abc", "1", 1_793_370_900, "app", listOf("a:b" to "strand")) }
+    assertThrows(LeaveCryptoCore.Failure::class.java) { core.checkGrantV2("t2.abc", "1", 1_793_370_900, "app", listOf("01J8" to "strand\n")) }
+  }
+
   @Test
   fun signatures() {
     for (c in cases("signatures")) {
