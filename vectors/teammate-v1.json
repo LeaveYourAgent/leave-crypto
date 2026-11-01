@@ -2,7 +2,7 @@
  "version": 1,
  "encoding": "base64url-nopad",
  "generatedBy": "teammate/generate.mjs, from teammate/reference.mjs (Node crypto); the test keys are the ones in vectors/v1.json",
- "status": "For independent checking before any app or server code is built on it.",
+ "status": "Checked by two implementations written separately from this one, from the spec alone, before any app or server code was built on it.",
  "spec": {
   "lp": "Every hash and MAC input is a list of fields, each as a 4-byte big-endian length then the bytes, the label first. Strings are UTF-8.",
   "ids": "Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. The run id is a ULID by the same rule as the account ids, the format the server uses.",
