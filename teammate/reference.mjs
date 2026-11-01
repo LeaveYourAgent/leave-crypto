@@ -137,7 +137,8 @@ function nonce32(n) {
 }
 function idsOf(ids) {
   const { runId, athleteAccountId, teammateAccountId } = ids;
-  if (typeof runId !== 'string' || runId.length === 0 || !isUlid(athleteAccountId) || !isUlid(teammateAccountId)) throw new Error('sas_field');
+  // Until the server's run id format is fixed: 1 to 64 printable ASCII characters, no spaces.
+  if (typeof runId !== 'string' || !/^[\x21-\x7e]{1,64}$/.test(runId) || !isUlid(athleteAccountId) || !isUlid(teammateAccountId)) throw new Error('sas_field');
   return [runId, athleteAccountId, teammateAccountId];
 }
 

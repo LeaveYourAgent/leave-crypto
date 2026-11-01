@@ -150,6 +150,9 @@ const sasRefusals = [
   { name: 'nA of 31 bytes', nA: b64(nA0.subarray(0, 31)), nT: base.nT, expect: 'sas_field' },
   { name: 'nT of 33 bytes', nA: base.nA, nT: b64(Buffer.concat([nT0, Buffer.from([0])])), expect: 'sas_field' },
   { name: 'an empty run id', runId: '', nA: base.nA, nT: base.nT, expect: 'sas_field' },
+  { name: 'a run id of 65 characters', runId: 'R'.repeat(65), nA: base.nA, nT: base.nT, expect: 'sas_field' },
+  { name: 'a run id with a space', runId: '01J9A2B3C4D5 E6F7G8H9J0K1M2', nA: base.nA, nT: base.nT, expect: 'sas_field' },
+  { name: 'a run id with a non-ASCII character', runId: '01J9A2B3C4D5É6F7G8H9J0K1M2', nA: base.nA, nT: base.nT, expect: 'sas_field' },
 ];
 for (const r of sasRefusals) {
   let got = null;
@@ -175,7 +178,7 @@ const out = {
   status: 'For independent checking before any app or server code is built on it.',
   spec: {
     lp: 'Every hash and MAC input is a list of fields, each as a 4-byte big-endian length then the bytes, the label first. Strings are UTF-8.',
-    ids: 'Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. A run id is checked only as non-empty; the account ids must be ULIDs.',
+    ids: 'Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. A run id is 1 to 64 printable ASCII characters with no spaces (0x21-0x7E) until the server fixes its format; the account ids must be ULIDs.',
     key: "K_T is the DER SubjectPublicKeyInfo of the Teammate's P-256 account key, the bytes the server gives the athlete's phone (or, on the Teammate's phone, the bytes it works out from its own share).",
     spkiSha256: 'SHA-256 of K_T, written as 43 characters of base64url without padding, in its one canonical spelling.',
     pin: {
