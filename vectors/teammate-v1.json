@@ -5,15 +5,17 @@
  "status": "For independent checking before any app or server code is built on it.",
  "spec": {
   "lp": "Every hash and MAC input is a list of fields, each as a 4-byte big-endian length then the bytes, the label first. Strings are UTF-8.",
-  "ids": "Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. A run id is 1 to 64 printable ASCII characters with no spaces (0x21-0x7E) until the server fixes its format; the account ids must be ULIDs.",
+  "ids": "Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. The run id is a ULID by the same rule as the account ids, the format the server uses.",
   "key": "K_T is the DER SubjectPublicKeyInfo of the Teammate's P-256 account key, the bytes the server gives the athlete's phone (or, on the Teammate's phone, the bytes it works out from its own share).",
   "spkiSha256": "SHA-256 of K_T, written as 43 characters of base64url without padding, in its one canonical spelling.",
   "pin": {
    "key": "HKDF-SHA256(ikm = the athlete's 32-byte share, salt = UTF-8 of the athlete's account id, info = 'leave:v1:teammate-pin', 32 bytes)",
-   "record": "{teammateAccountId, spkiSha256, compared, how, at}, exactly these five fields. compared is a boolean; how is scan or call when compared is true and none when it is false; at is whole seconds since 1970, not negative. Anything else is refused as pin_record before a MAC is made or checked.",
+   "record": "{teammateAccountId, spkiSha256, compared, how, at}, exactly these five fields. compared is a boolean; how is scan or call when compared is true, and none or removed when it is false; spkiSha256 is the zero hash (43 × A, 32 zero bytes) exactly when how is removed (a tombstone: the Teammate removed); at is whole seconds since 1970, not negative, written in JSON as a plain integer (no fraction, exponent or sign: 1793570400.0 is refused). Anything else is refused as pin_record before a MAC is made or checked.",
    "macInput": "LP('leave:v1:teammate-pin') LP(teammateAccountId) LP(the 32 hash bytes) LP('true' | 'false') LP(how) LP(at in decimal ASCII)",
    "mac": "HMAC-SHA256(pin key, macInput), 32 bytes, base64url; compared in constant time.",
-   "wrap": "A record key is wrapped to K_T only when there is a pin, its MAC verifies under this athlete's share and id, and SHA-256(K_T) equals the record's spkiSha256. Otherwise teammate_unpinned, and nothing is wrapped."
+   "wrap": "On the newest pin the phone holds: a record key is wrapped to K_T only when there is a pin, its MAC verifies under this athlete's share and id, it is not a removal, and SHA-256(K_T) equals the record's spkiSha256. A removal gives teammate_removed; anything else teammate_unpinned; either way nothing is wrapped.",
+   "cache": "Each phone keeps the newest pin it has seen. A served pin that passes the record check and its MAC replaces the cache when there is none, or when its at is higher than the cache's, whatever Teammate it names (accepted). The identical pin changes nothing (same). Any other pin is refused as pin_older and the cache stays: the server can't clear or lower it. A record or MAC failure is pin_record or mac, the cache unchanged.",
+   "writeAt": "Before writing a pin (a match, sharing without comparing, a change or a removal) the phone fetches and verifies the server's current pin and counts it as seen; the new pin's at = max(now, newest seen + 1), or now when none was seen. If that fetch fails, nothing is written."
   },
   "code": {
    "text": "LEAVE-TM1:<athleteAccountId>:<teammateAccountId>:<spkiSha256 of the Teammate's own key>, a plain string in a QR code, not a URL.",
@@ -80,6 +82,18 @@
     },
     "macInput": "AAAAFWxlYXZlOnYxOnRlYW1tYXRlLXBpbgAAABowMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQgAAACDVs_DJCr3VqekptG1zxl0wOPhD-9yrDl5G1oGy9uUpbQAAAAVmYWxzZQAAAARub25lAAAACjE3OTM1NzA0MDI",
     "mac": "rcRz7LSfPRzGZp5puSB3RL6Nd-_NqlMfa8ZWRfBHasQ"
+   },
+   {
+    "name": "the Teammate removed (a tombstone)",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+     "compared": false,
+     "how": "removed",
+     "at": 1793570403
+    },
+    "macInput": "AAAAFWxlYXZlOnYxOnRlYW1tYXRlLXBpbgAAABowMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQgAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVmYWxzZQAAAAdyZW1vdmVkAAAACjE3OTM1NzA0MDM",
+    "mac": "9gV43OQbSSN4td6X990of8JyZpcgJr1Y6xoo6viT-Kk"
    }
   ],
   "refusals": [
@@ -192,7 +206,7 @@
     "expect": "pin_record"
    },
    {
-    "name": "how not one of scan, call, none",
+    "name": "how not one of scan, call, none, removed",
     "record": {
      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
@@ -263,6 +277,66 @@
     },
     "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3g",
     "expect": "mac"
+   },
+   {
+    "name": "the zero hash with how none",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+     "compared": false,
+     "how": "none",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "the zero hash with how scan",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "compared true with how removed",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+     "compared": true,
+     "how": "removed",
+     "at": 1793570403
+    },
+    "mac": "9gV43OQbSSN4td6X990of8JyZpcgJr1Y6xoo6viT-Kk",
+    "expect": "pin_record"
+   },
+   {
+    "name": "a removal with a non-zero hash",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": false,
+     "how": "removed",
+     "at": 1793570403
+    },
+    "mac": "9gV43OQbSSN4td6X990of8JyZpcgJr1Y6xoo6viT-Kk",
+    "expect": "pin_record"
+   },
+   {
+    "name": "a tombstone whose at was changed",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+     "compared": false,
+     "how": "removed",
+     "at": 1793570404
+    },
+    "mac": "9gV43OQbSSN4td6X990of8JyZpcgJr1Y6xoo6viT-Kk",
+    "expect": "mac"
    }
   ],
   "wrap": [
@@ -331,6 +405,485 @@
     },
     "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
     "expect": "teammate_unpinned"
+   },
+   {
+    "name": "the newest pin is a removal: no wrap to anyone",
+    "pin": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793570403
+     },
+     "mac": "9gV43OQbSSN4td6X990of8JyZpcgJr1Y6xoo6viT-Kk"
+    },
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "expect": "teammate_removed"
+   }
+  ],
+  "jsonText": [
+   {
+    "name": "at as a plain integer",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":1793570400}",
+    "expect": null,
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw"
+   },
+   {
+    "name": "at written with a fraction (1793570400.0)",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":1793570400.0}",
+    "expect": "pin_record"
+   },
+   {
+    "name": "at written with an exponent (1.7935704e9)",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":1.7935704e9}",
+    "expect": "pin_record"
+   },
+   {
+    "name": "at written with a minus sign (-0)",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":-0}",
+    "expect": "pin_record"
+   },
+   {
+    "name": "at with a leading zero (01793570400) is not JSON",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":01793570400}",
+    "expect": "pin_record"
+   },
+   {
+    "name": "at as a string",
+    "text": "{\"teammateAccountId\":\"01J8Z3V4Q6X7R2M9K5T0W1Y8AB\",\"spkiSha256\":\"1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\",\"compared\":true,\"how\":\"scan\",\"at\":\"1793570400\"}",
+    "expect": "pin_record"
+   }
+  ],
+  "cache": [
+   {
+    "name": "no cache: the first served pin that verifies is taken",
+    "cache": null,
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571000
+     },
+     "mac": "ptT3AT6BGgxLzpa9mG67oXYqGUTe4N7q6Gem8QJeY7Y"
+    },
+    "expect": "accepted",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571000
+     },
+     "mac": "ptT3AT6BGgxLzpa9mG67oXYqGUTe4N7q6Gem8QJeY7Y"
+    }
+   },
+   {
+    "name": "a newer pin replaces",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571000
+     },
+     "mac": "ptT3AT6BGgxLzpa9mG67oXYqGUTe4N7q6Gem8QJeY7Y"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "expect": "accepted",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    }
+   },
+   {
+    "name": "an older pin that verifies is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571000
+     },
+     "mac": "ptT3AT6BGgxLzpa9mG67oXYqGUTe4N7q6Gem8QJeY7Y"
+    },
+    "expect": "pin_older",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    }
+   },
+   {
+    "name": "the same time but a different record is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": false,
+      "how": "none",
+      "at": 1793571010
+     },
+     "mac": "DE9tzAlBpTmrAZMXq9U9k_k75HcY6oAuB9lxTbCIJP0"
+    },
+    "expect": "pin_older",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    }
+   },
+   {
+    "name": "the identical pin changes nothing",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "expect": "same",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    }
+   },
+   {
+    "name": "a former Teammate's older pin is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": true,
+      "how": "scan",
+      "at": 1793570900
+     },
+     "mac": "gsOwbM8yLky1C_8oK8hd_N179ry1BaKnAsX-qgGgrEI"
+    },
+    "expect": "pin_older",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    }
+   },
+   {
+    "name": "a new Teammate's newer pin replaces",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    },
+    "expect": "accepted",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    }
+   },
+   {
+    "name": "a pin with a bad MAC is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571040
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "expect": "mac",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    }
+   },
+   {
+    "name": "a malformed pin is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "qr",
+      "at": 1793571040
+     },
+     "mac": "e9Wd0XhnAXDkxTjgfl_UFe6b5dd6QxgdzpRemSKCaqM"
+    },
+    "expect": "pin_record",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    }
+   },
+   {
+    "name": "a newer removal replaces",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": false,
+      "how": "none",
+      "at": 1793571020
+     },
+     "mac": "RUUWcXCIILF1Q4wqSZYnsEG52JvR6FKWvhGHsNtrYgQ"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793571030
+     },
+     "mac": "I8z3nbU1vgbRw3yKlQqmlGzwWf864PWTpEzlyr4-9ZI"
+    },
+    "expect": "accepted",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793571030
+     },
+     "mac": "I8z3nbU1vgbRw3yKlQqmlGzwWf864PWTpEzlyr4-9ZI"
+    },
+    "wrapAfter": {
+     "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+     "expect": "teammate_removed"
+    }
+   },
+   {
+    "name": "an older pin after the removal is refused",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793571030
+     },
+     "mac": "I8z3nbU1vgbRw3yKlQqmlGzwWf864PWTpEzlyr4-9ZI"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "call",
+      "at": 1793571010
+     },
+     "mac": "J4AbJVrgFuhGVnsR2sJMRDRNwdFEo9Sy9RjgLzuf4Ak"
+    },
+    "expect": "pin_older",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793571030
+     },
+     "mac": "I8z3nbU1vgbRw3yKlQqmlGzwWf864PWTpEzlyr4-9ZI"
+    }
+   },
+   {
+    "name": "a newer pin after the removal replaces",
+    "cache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+      "spkiSha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "compared": false,
+      "how": "removed",
+      "at": 1793571030
+     },
+     "mac": "I8z3nbU1vgbRw3yKlQqmlGzwWf864PWTpEzlyr4-9ZI"
+    },
+    "served": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571040
+     },
+     "mac": "e9Wd0XhnAXDkxTjgfl_UFe6b5dd6QxgdzpRemSKCaqM"
+    },
+    "expect": "accepted",
+    "expectCache": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793571040
+     },
+     "mac": "e9Wd0XhnAXDkxTjgfl_UFe6b5dd6QxgdzpRemSKCaqM"
+    }
+   }
+  ],
+  "writeAt": [
+   {
+    "name": "the clock is behind the newest pin seen",
+    "nowSeconds": 1793571005,
+    "newestSeenAt": 1793571040,
+    "at": 1793571041
+   },
+   {
+    "name": "the clock is ahead of it",
+    "nowSeconds": 1793571100,
+    "newestSeenAt": 1793571040,
+    "at": 1793571100
+   },
+   {
+    "name": "the clock equals it",
+    "nowSeconds": 1793571040,
+    "newestSeenAt": 1793571040,
+    "at": 1793571041
+   },
+   {
+    "name": "no pin seen yet",
+    "nowSeconds": 1793571000,
+    "newestSeenAt": null,
+    "at": 1793571000
    }
   ]
  },
@@ -620,6 +1173,20 @@
    {
     "name": "a run id with a non-ASCII character",
     "runId": "01J9A2B3C4D5É6F7G8H9J0K1M2",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "expect": "sas_field"
+   },
+   {
+    "name": "a run id of printable ASCII that is not a ULID",
+    "runId": "run-1",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "expect": "sas_field"
+   },
+   {
+    "name": "a run id in lower case",
+    "runId": "01j9a2b3c4d5e6f7g8h9j0k1m2",
     "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
     "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
     "expect": "sas_field"

@@ -32,6 +32,7 @@ const records = [
   ['compared by a scan', { teammateAccountId: TM, spkiSha256: hT, compared: true, how: 'scan', at: 1793570400 }],
   ['compared on a call', { teammateAccountId: TM, spkiSha256: hT, compared: true, how: 'call', at: 1793570401 }],
   ['kept without comparing', { teammateAccountId: TM, spkiSha256: hT, compared: false, how: 'none', at: 1793570402 }],
+  ['the Teammate removed (a tombstone)', { teammateAccountId: TM, spkiSha256: T.ZERO_HASH, compared: false, how: 'removed', at: 1793570403 }],
 ];
 const pinCases = records.map(([name, record]) => ({ name, record, macInput: b64(T.pinMacInput(record)), mac: b64(T.pinMac(share, A, record)) }));
 const good = pinCases[0];
@@ -46,12 +47,17 @@ const pinRefusals = [
   { name: 'compared true with how none', record: { ...good.record, how: 'none' }, mac: good.mac, expect: 'pin_record' },
   { name: 'compared false with how scan', record: { ...good.record, compared: false }, mac: good.mac, expect: 'pin_record' },
   { name: 'compared as a string', record: { ...good.record, compared: 'true' }, mac: good.mac, expect: 'pin_record' },
-  { name: 'how not one of scan, call, none', record: { ...good.record, how: 'qr' }, mac: good.mac, expect: 'pin_record' },
+  { name: 'how not one of scan, call, none, removed', record: { ...good.record, how: 'qr' }, mac: good.mac, expect: 'pin_record' },
   { name: 'at not a whole number', record: { ...good.record, at: 1793570400.5 }, mac: good.mac, expect: 'pin_record' },
   { name: 'an extra field', record: { ...good.record, note: 'x' }, mac: good.mac, expect: 'pin_record' },
   { name: 'a hash with padding', record: { ...good.record, spkiSha256: `${hT}=` }, mac: good.mac, expect: 'pin_record' },
   { name: 'a lower-case Teammate id', record: { ...good.record, teammateAccountId: TM.toLowerCase() }, mac: good.mac, expect: 'pin_record' },
   { name: 'a MAC one byte short', record: good.record, mac: b64(unb64(good.mac).subarray(0, 31)), expect: 'mac' },
+  { name: 'the zero hash with how none', record: { ...good.record, spkiSha256: T.ZERO_HASH, compared: false, how: 'none' }, mac: good.mac, expect: 'pin_record' },
+  { name: 'the zero hash with how scan', record: { ...good.record, spkiSha256: T.ZERO_HASH }, mac: good.mac, expect: 'pin_record' },
+  { name: 'compared true with how removed', record: { ...pinCases[3].record, compared: true }, mac: pinCases[3].mac, expect: 'pin_record' },
+  { name: 'a removal with a non-zero hash', record: { ...pinCases[3].record, spkiSha256: hT }, mac: pinCases[3].mac, expect: 'pin_record' },
+  { name: 'a tombstone whose at was changed', record: { ...pinCases[3].record, at: pinCases[3].record.at + 1 }, mac: pinCases[3].mac, expect: 'mac' },
 ];
 for (const r of pinRefusals) {
   const problem = T.pinRecordProblem(r.record);
@@ -64,8 +70,73 @@ const wrap = [
   { name: 'no pin', pin: null, spki: keys.teammate.publicKeySpki, expect: 'teammate_unpinned' },
   { name: 'the server sends another key', pin: pinOf(pinCases[0]), spki: keys.other.publicKeySpki, expect: 'teammate_unpinned' },
   { name: 'a pin the server changed to the other key', pin: { record: { ...good.record, spkiSha256: hX }, mac: good.mac }, spki: keys.other.publicKeySpki, expect: 'teammate_unpinned' },
+  { name: 'the newest pin is a removal: no wrap to anyone', pin: pinOf(pinCases[3]), spki: keys.teammate.publicKeySpki, expect: 'teammate_removed' },
 ];
 for (const w of wrap) if (T.wrapRefusal(share, A, w.pin, unb64(w.spki)) !== w.expect) throw new Error(`wrap not as expected: ${w.name}`);
+
+// A pin record read from JSON text: `at` only as a plain integer.
+const recordText = at => `{"teammateAccountId":"${TM}","spkiSha256":"${hT}","compared":true,"how":"scan","at":${at}}`;
+const jsonText = [
+  { name: 'at as a plain integer', text: recordText('1793570400'), expect: null, mac: good.mac },
+  { name: 'at written with a fraction (1793570400.0)', text: recordText('1793570400.0'), expect: 'pin_record' },
+  { name: 'at written with an exponent (1.7935704e9)', text: recordText('1.7935704e9'), expect: 'pin_record' },
+  { name: 'at written with a minus sign (-0)', text: recordText('-0'), expect: 'pin_record' },
+  { name: 'at with a leading zero (01793570400) is not JSON', text: recordText('01793570400'), expect: 'pin_record' },
+  { name: 'at as a string', text: recordText('"1793570400"'), expect: 'pin_record' },
+];
+for (const j of jsonText) {
+  const r = T.parsePinRecord(j.text);
+  if ((r.problem ?? null) !== j.expect) throw new Error(`json text: ${j.name}`);
+  if (!r.problem && !T.verifyPin(share, A, r.record, j.mac)) throw new Error(`json text mac: ${j.name}`);
+}
+
+// The newest pin a phone has seen (its cache), step by step: each step's cache is the one before's result.
+const pinAt = (name, teammateAccountId, spkiSha256, compared, how, at) => {
+  const record = { teammateAccountId, spkiSha256, compared, how, at };
+  return { name, record, mac: b64(T.pinMac(share, A, record)) };
+};
+const t0 = 1793571000;
+const X = keys.otherTeammateAccountId;
+const pOld = pinAt('Teammate, scanned', TM, hT, true, 'scan', t0);
+const pNew = pinAt('Teammate, compared on a call later', TM, hT, true, 'call', t0 + 10);
+const pEqualAt = pinAt('Teammate, kept without comparing, at the same time as the call', TM, hT, false, 'none', t0 + 10);
+const pFormer = pinAt('a former Teammate, older', X, hX, true, 'scan', t0 - 100);
+const pNewTeammate = pinAt('a new Teammate, set on another phone', X, hX, false, 'none', t0 + 20);
+const pRemoved = pinAt('the new Teammate removed', X, T.ZERO_HASH, false, 'removed', t0 + 30);
+const pAfter = pinAt('the first Teammate again, after the removal', TM, hT, true, 'scan', t0 + 40);
+const steps = [
+  ['no cache: the first served pin that verifies is taken', pOld],
+  ['a newer pin replaces', pNew],
+  ['an older pin that verifies is refused', pOld],
+  ['the same time but a different record is refused', pEqualAt],
+  ['the identical pin changes nothing', pNew],
+  ["a former Teammate's older pin is refused", pFormer],
+  ["a new Teammate's newer pin replaces", pNewTeammate],
+  ['a pin with a bad MAC is refused', { name: 'forged', record: { ...pAfter.record }, mac: pNew.mac }],
+  ['a malformed pin is refused', { name: 'malformed', record: { ...pAfter.record, how: 'qr' }, mac: pAfter.mac }],
+  ['a newer removal replaces', pRemoved],
+  ['an older pin after the removal is refused', pNew],
+  ['a newer pin after the removal replaces', pAfter],
+];
+let cacheNow = null;
+const cacheSteps = steps.map(([name, served]) => {
+  const before = cacheNow;
+  const r = T.acceptServedPin(share, A, before, { record: served.record, mac: served.mac });
+  cacheNow = r.cache;
+  const step = { name, cache: before, served: { record: served.record, mac: served.mac }, expect: r.result, expectCache: r.cache };
+  if (served === pRemoved) step.wrapAfter = { spki: keys.other.publicKeySpki, expect: T.wrapRefusal(share, A, r.cache, kX) };
+  return step;
+});
+const expected = ['accepted', 'accepted', 'pin_older', 'pin_older', 'same', 'pin_older', 'accepted', 'mac', 'pin_record', 'accepted', 'pin_older', 'accepted'];
+if (JSON.stringify(cacheSteps.map(s => s.expect)) !== JSON.stringify(expected)) throw new Error(`cache steps: ${cacheSteps.map(s => s.expect)}`);
+if (cacheSteps[9].wrapAfter.expect !== 'teammate_removed') throw new Error('wrap after removal');
+const writeAtCases = [
+  { name: 'the clock is behind the newest pin seen', nowSeconds: t0 + 5, newestSeenAt: t0 + 40, at: T.writeAt(t0 + 5, t0 + 40) },
+  { name: 'the clock is ahead of it', nowSeconds: t0 + 100, newestSeenAt: t0 + 40, at: T.writeAt(t0 + 100, t0 + 40) },
+  { name: 'the clock equals it', nowSeconds: t0 + 40, newestSeenAt: t0 + 40, at: T.writeAt(t0 + 40, t0 + 40) },
+  { name: 'no pin seen yet', nowSeconds: t0, newestSeenAt: null, at: T.writeAt(t0, null) },
+];
+if (writeAtCases.map(w => w.at - t0).join() !== '41,100,41,0') throw new Error('writeAt');
 
 // ---------- code ----------
 const text = T.teammateCode(A, TM, kT);
@@ -153,6 +224,8 @@ const sasRefusals = [
   { name: 'a run id of 65 characters', runId: 'R'.repeat(65), nA: base.nA, nT: base.nT, expect: 'sas_field' },
   { name: 'a run id with a space', runId: '01J9A2B3C4D5 E6F7G8H9J0K1M2', nA: base.nA, nT: base.nT, expect: 'sas_field' },
   { name: 'a run id with a non-ASCII character', runId: '01J9A2B3C4D5É6F7G8H9J0K1M2', nA: base.nA, nT: base.nT, expect: 'sas_field' },
+  { name: 'a run id of printable ASCII that is not a ULID', runId: 'run-1', nA: base.nA, nT: base.nT, expect: 'sas_field' },
+  { name: 'a run id in lower case', runId: '01j9a2b3c4d5e6f7g8h9j0k1m2', nA: base.nA, nT: base.nT, expect: 'sas_field' },
 ];
 for (const r of sasRefusals) {
   let got = null;
@@ -178,15 +251,17 @@ const out = {
   status: 'For independent checking before any app or server code is built on it.',
   spec: {
     lp: 'Every hash and MAC input is a list of fields, each as a 4-byte big-endian length then the bytes, the label first. Strings are UTF-8.',
-    ids: 'Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. A run id is 1 to 64 printable ASCII characters with no spaces (0x21-0x7E) until the server fixes its format; the account ids must be ULIDs.',
+    ids: 'Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. The run id is a ULID by the same rule as the account ids, the format the server uses.',
     key: "K_T is the DER SubjectPublicKeyInfo of the Teammate's P-256 account key, the bytes the server gives the athlete's phone (or, on the Teammate's phone, the bytes it works out from its own share).",
     spkiSha256: 'SHA-256 of K_T, written as 43 characters of base64url without padding, in its one canonical spelling.',
     pin: {
       key: "HKDF-SHA256(ikm = the athlete's 32-byte share, salt = UTF-8 of the athlete's account id, info = 'leave:v1:teammate-pin', 32 bytes)",
-      record: '{teammateAccountId, spkiSha256, compared, how, at}, exactly these five fields. compared is a boolean; how is scan or call when compared is true and none when it is false; at is whole seconds since 1970, not negative. Anything else is refused as pin_record before a MAC is made or checked.',
+      record: '{teammateAccountId, spkiSha256, compared, how, at}, exactly these five fields. compared is a boolean; how is scan or call when compared is true, and none or removed when it is false; spkiSha256 is the zero hash (43 × A, 32 zero bytes) exactly when how is removed (a tombstone: the Teammate removed); at is whole seconds since 1970, not negative, written in JSON as a plain integer (no fraction, exponent or sign: 1793570400.0 is refused). Anything else is refused as pin_record before a MAC is made or checked.',
       macInput: "LP('leave:v1:teammate-pin') LP(teammateAccountId) LP(the 32 hash bytes) LP('true' | 'false') LP(how) LP(at in decimal ASCII)",
       mac: 'HMAC-SHA256(pin key, macInput), 32 bytes, base64url; compared in constant time.',
-      wrap: "A record key is wrapped to K_T only when there is a pin, its MAC verifies under this athlete's share and id, and SHA-256(K_T) equals the record's spkiSha256. Otherwise teammate_unpinned, and nothing is wrapped.",
+      wrap: "On the newest pin the phone holds: a record key is wrapped to K_T only when there is a pin, its MAC verifies under this athlete's share and id, it is not a removal, and SHA-256(K_T) equals the record's spkiSha256. A removal gives teammate_removed; anything else teammate_unpinned; either way nothing is wrapped.",
+      cache: "Each phone keeps the newest pin it has seen. A served pin that passes the record check and its MAC replaces the cache when there is none, or when its at is higher than the cache's, whatever Teammate it names (accepted). The identical pin changes nothing (same). Any other pin is refused as pin_older and the cache stays: the server can't clear or lower it. A record or MAC failure is pin_record or mac, the cache unchanged.",
+      writeAt: "Before writing a pin (a match, sharing without comparing, a change or a removal) the phone fetches and verifies the server's current pin and counts it as seen; the new pin's at = max(now, newest seen + 1), or now when none was seen. If that fetch fails, nothing is written.",
     },
     code: {
       text: "LEAVE-TM1:<athleteAccountId>:<teammateAccountId>:<spkiSha256 of the Teammate's own key>, a plain string in a QR code, not a URL.",
@@ -200,7 +275,7 @@ const out = {
     },
   },
   keys,
-  pin: { cases: pinCases, refusals: pinRefusals, wrap },
+  pin: { cases: pinCases, refusals: pinRefusals, wrap, jsonText, cache: cacheSteps, writeAt: writeAtCases },
   code: { encode: [{ athleteAccountId: A, teammateAccountId: TM, spki: keys.teammate.publicKeySpki, text }], check: codeChecks, receivedKeyChanged: keyChanged },
   sas: { cases: sas, notOpening: [swappedTowardAthlete, otherNonce], binding: sasBinding, lpExample, refusals: sasRefusals, bias },
 };

@@ -28,6 +28,20 @@ for (const r of v.pin.refusals) {
   eq(`pin refused: ${r.name}`, got, r.expect);
 }
 for (const w of v.pin.wrap) eq(`wrap: ${w.name}`, T.wrapRefusal(share, A, w.pin, unb64(w.spki)), w.expect);
+for (const j of v.pin.jsonText) {
+  const r = T.parsePinRecord(j.text);
+  eq(`pin json text: ${j.name}`, r.problem ?? null, j.expect);
+  if (!r.problem) eq(`pin json text mac: ${j.name}`, T.verifyPin(share, A, r.record, j.mac), true);
+}
+let cache = null;
+for (const st of v.pin.cache) {
+  eq(`pin cache, the cache before: ${st.name}`, st.cache, cache);
+  const r = T.acceptServedPin(share, A, st.cache, st.served);
+  eq(`pin cache: ${st.name}`, [r.result, r.cache], [st.expect, st.expectCache]);
+  if (st.wrapAfter) eq(`pin cache, wrap after: ${st.name}`, T.wrapRefusal(share, A, r.cache, unb64(st.wrapAfter.spki)), st.wrapAfter.expect);
+  cache = r.cache;
+}
+for (const w of v.pin.writeAt) eq(`pin writeAt: ${w.name}`, T.writeAt(w.nowSeconds, w.newestSeenAt), w.at);
 
 for (const e of v.code.encode) eq('code text', T.teammateCode(e.athleteAccountId, e.teammateAccountId, unb64(e.spki)), e.text);
 for (const c of v.code.check) {

@@ -41,7 +41,9 @@ export const spkiSha256 = spkiDer => sha256(spkiDer);
 // ---------- 1. The pin ----------
 
 export const PIN_LABEL = 'leave:v1:teammate-pin';
-const PIN_HOW = { true: ['scan', 'call'], false: ['none'] };
+const PIN_HOW = { true: ['scan', 'call'], false: ['none', 'removed'] };
+/** The hash a removal (tombstone) pin carries: 32 zero bytes, and only a removal carries it. */
+export const ZERO_HASH = 'A'.repeat(43);
 
 /** The MAC key: HKDF-SHA256 of the athlete's share, salt the athlete's account id, info the label. */
 export function pinKey(share, athleteAccountId) {
@@ -49,8 +51,9 @@ export function pinKey(share, athleteAccountId) {
 }
 
 /**
- * A pin record is refused before any MAC is made or checked when it is not one of the three
- * kinds the phone writes: compared by a scan, compared on a call, or kept without comparing.
+ * A pin record is refused before any MAC is made or checked when it is not one of the four
+ * kinds the phone writes: compared by a scan, compared on a call, kept without comparing, or the
+ * Teammate removed (a tombstone, with the zero hash).
  */
 export function pinRecordProblem(r) {
   if (!r || typeof r !== 'object') return 'pin_record';
@@ -59,8 +62,30 @@ export function pinRecordProblem(r) {
   if (!isUlid(r.teammateAccountId)) return 'pin_record';
   if (!hash32(r.spkiSha256)) return 'pin_record';
   if (typeof r.compared !== 'boolean' || !PIN_HOW[r.compared].includes(r.how)) return 'pin_record';
+  if ((r.how === 'removed') !== (r.spkiSha256 === ZERO_HASH)) return 'pin_record';
   if (!Number.isSafeInteger(r.at) || r.at < 0) return 'pin_record';
   return null;
+}
+
+/**
+ * A pin record as JSON text, the way a phone reads one from the server or its own store. `at` must
+ * be written as a plain integer (no fraction, no exponent, no sign): 1793570400.0 and 1.7935704e9
+ * are refused as pin_record, though JSON.parse alone would make them the same number.
+ *   → { record } or { problem: 'pin_record' }
+ */
+export function parsePinRecord(text) {
+  let plainAt = true;
+  let record;
+  try {
+    record = JSON.parse(text, function (key, value, context) {
+      if (key === 'at' && typeof value === 'number' && !/^(0|[1-9][0-9]*)$/.test(context?.source ?? '')) plainAt = false;
+      return value;
+    });
+  } catch {
+    return { problem: 'pin_record' };
+  }
+  if (!plainAt || pinRecordProblem(record)) return { problem: 'pin_record' };
+  return { record };
 }
 
 export function pinMacInput(r) {
@@ -80,13 +105,40 @@ export function verifyPin(share, athleteAccountId, r, macText) {
   return mac !== null && timingSafeEqual(mac, pinMac(share, athleteAccountId, r));
 }
 
+const samePin = (a, b) => JSON.stringify(Object.entries(a.record).sort()) === JSON.stringify(Object.entries(b.record).sort()) && a.mac === b.mac;
+
 /**
- * The wrap gate: a record key goes to the Teammate's key only under a pin that verifies and names
- * that same key. null means the wrap may go ahead; otherwise the reason it can't.
+ * What a phone does with a pin the server serves, given the newest pin it has seen (its cache,
+ * or null). A pin made with this share and newer than the cache replaces it, whatever Teammate it
+ * names; an identical pin changes nothing; any other pin is refused and the cache stays. The
+ * server can't clear or lower the cache: only a newer pin made with the share replaces it.
+ *   → { result: 'accepted' | 'same' | 'pin_older' | 'pin_record' | 'mac', cache }
+ */
+export function acceptServedPin(share, athleteAccountId, cache, served) {
+  if (pinRecordProblem(served?.record)) return { result: 'pin_record', cache };
+  if (!verifyPin(share, athleteAccountId, served.record, served.mac)) return { result: 'mac', cache };
+  if (!cache) return { result: 'accepted', cache: served };
+  if (samePin(cache, served)) return { result: 'same', cache };
+  if (served.record.at > cache.record.at) return { result: 'accepted', cache: served };
+  return { result: 'pin_older', cache };
+}
+
+/**
+ * The `at` of a pin this phone writes (a match, sharing without comparing, a change or a removal),
+ * after it has fetched and verified the server's current pin: never at or below the newest seen.
+ * newestSeenAt is null when there is none.
+ */
+export const writeAt = (nowSeconds, newestSeenAt) => (newestSeenAt === null ? nowSeconds : Math.max(nowSeconds, newestSeenAt + 1));
+
+/**
+ * The wrap gate, on the newest pin the phone holds: a record key goes to the Teammate's key only
+ * under a pin that verifies and names that same key, and never after a removal. null means the
+ * wrap may go ahead; otherwise the reason it can't.
  */
 export function wrapRefusal(share, athleteAccountId, pin, spkiDer) {
   if (!pin) return 'teammate_unpinned';
   if (!verifyPin(share, athleteAccountId, pin.record, pin.mac)) return 'teammate_unpinned';
+  if (pin.record.how === 'removed') return 'teammate_removed';
   if (!timingSafeEqual(hash32(pin.record.spkiSha256), spkiSha256(spkiDer))) return 'teammate_unpinned';
   return null;
 }
@@ -137,8 +189,7 @@ function nonce32(n) {
 }
 function idsOf(ids) {
   const { runId, athleteAccountId, teammateAccountId } = ids;
-  // Until the server's run id format is fixed: 1 to 64 printable ASCII characters, no spaces.
-  if (typeof runId !== 'string' || !/^[\x21-\x7e]{1,64}$/.test(runId) || !isUlid(athleteAccountId) || !isUlid(teammateAccountId)) throw new Error('sas_field');
+  if (!isUlid(runId) || !isUlid(athleteAccountId) || !isUlid(teammateAccountId)) throw new Error('sas_field');
   return [runId, athleteAccountId, teammateAccountId];
 }
 
