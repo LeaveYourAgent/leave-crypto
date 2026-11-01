@@ -1,0 +1,616 @@
+{
+ "version": 1,
+ "encoding": "base64url-nopad",
+ "generatedBy": "teammate/generate.mjs, from teammate/reference.mjs (Node crypto); the test keys are the ones in vectors/v1.json",
+ "status": "For independent checking before any app or server code is built on it.",
+ "spec": {
+  "lp": "Every hash and MAC input is a list of fields, each as a 4-byte big-endian length then the bytes, the label first. Strings are UTF-8.",
+  "ids": "Account ids and run ids in these vectors are ULIDs: 26 characters of Crockford base32, upper case only, first character 0-7. A run id is checked only as non-empty; the account ids must be ULIDs.",
+  "key": "K_T is the DER SubjectPublicKeyInfo of the Teammate's P-256 account key, the bytes the server gives the athlete's phone (or, on the Teammate's phone, the bytes it works out from its own share).",
+  "spkiSha256": "SHA-256 of K_T, written as 43 characters of base64url without padding, in its one canonical spelling.",
+  "pin": {
+   "key": "HKDF-SHA256(ikm = the athlete's 32-byte share, salt = UTF-8 of the athlete's account id, info = 'leave:v1:teammate-pin', 32 bytes)",
+   "record": "{teammateAccountId, spkiSha256, compared, how, at}, exactly these five fields. compared is a boolean; how is scan or call when compared is true and none when it is false; at is whole seconds since 1970, not negative. Anything else is refused as pin_record before a MAC is made or checked.",
+   "macInput": "LP('leave:v1:teammate-pin') LP(teammateAccountId) LP(the 32 hash bytes) LP('true' | 'false') LP(how) LP(at in decimal ASCII)",
+   "mac": "HMAC-SHA256(pin key, macInput), 32 bytes, base64url; compared in constant time.",
+   "wrap": "A record key is wrapped to K_T only when there is a pin, its MAC verifies under this athlete's share and id, and SHA-256(K_T) equals the record's spkiSha256. Otherwise teammate_unpinned, and nothing is wrapped."
+  },
+  "code": {
+   "text": "LEAVE-TM1:<athleteAccountId>:<teammateAccountId>:<spkiSha256 of the Teammate's own key>, a plain string in a QR code, not a URL.",
+   "check": "In this order, the first failure deciding: format (printable ASCII with no spaces, exactly four ':'-separated fields, both ids ULIDs, the hash 43 canonical base64url characters for 32 bytes); version (the first field is exactly LEAVE-TM1); athlete (the athlete id is this phone's own account id); teammate (the Teammate id is the one the server named); key (the hash equals SHA-256 of the key this phone received, compared in constant time)."
+  },
+  "sas": {
+   "roles": "A is the athlete's phone, T the Teammate's. ids = (runId, athleteAccountId, teammateAccountId), each phone using the ids it knows itself. nA and nT are 32 random bytes each; any other length is refused as sas_field.",
+   "commit": "c = SHA-256(LP('leave:v1:teammate-sas-commit') LP(runId) LP(athleteAccountId) LP(teammateAccountId) LP(K_T as A received it) LP(nA)), sent by A first.",
+   "order": "T sends nT only on a person's tap. A reveals nA only after one nT, and only once. T recomputes c with its own K_T and the revealed nA; if it differs, the comparison did not complete and no digits show.",
+   "digits": "d = SHA-256(LP('leave:v1:teammate-sas') LP(runId) LP(athleteAccountId) LP(teammateAccountId) LP(K_T) LP(nA) LP(nT)); digits = the first 4 bytes of d read as an unsigned big-endian 32-bit number, mod 1,000,000, written as 6 decimal digits with leading zeros, shown as 3 + 3."
+  }
+ },
+ "keys": {
+  "athlete": {
+   "accountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+   "share": "1z629_LTVfYDI-ilu6Ltcbtr6PORdLpYmjapaauEneg",
+   "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1azHgCPCGPXyYWWjrm2__E6v-zWaUJOEwOB9nxJnn-EpW3G1_t0rVgmLHk4LNGN3UKunaKtyVP6C2wSQ3ctqtw"
+  },
+  "teammate": {
+   "accountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+   "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A"
+  },
+  "other": {
+   "note": "another P-256 key (v1.json hpke 'share wrapped to a new device'), standing for a key the server swapped in",
+   "publicKeySpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q"
+  },
+  "otherAthleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AC",
+  "otherTeammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD"
+ },
+ "pin": {
+  "cases": [
+   {
+    "name": "compared by a scan",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "macInput": "AAAAFWxlYXZlOnYxOnRlYW1tYXRlLXBpbgAAABowMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQgAAACDVs_DJCr3VqekptG1zxl0wOPhD-9yrDl5G1oGy9uUpbQAAAAR0cnVlAAAABHNjYW4AAAAKMTc5MzU3MDQwMA",
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw"
+   },
+   {
+    "name": "compared on a call",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "call",
+     "at": 1793570401
+    },
+    "macInput": "AAAAFWxlYXZlOnYxOnRlYW1tYXRlLXBpbgAAABowMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQgAAACDVs_DJCr3VqekptG1zxl0wOPhD-9yrDl5G1oGy9uUpbQAAAAR0cnVlAAAABGNhbGwAAAAKMTc5MzU3MDQwMQ",
+    "mac": "gn4ma6nKEd02koASXgwUfuLySbnz-FmK_ri8aazn7kc"
+   },
+   {
+    "name": "kept without comparing",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": false,
+     "how": "none",
+     "at": 1793570402
+    },
+    "macInput": "AAAAFWxlYXZlOnYxOnRlYW1tYXRlLXBpbgAAABowMUo4WjNWNFE2WDdSMk05SzVUMFcxWThBQgAAACDVs_DJCr3VqekptG1zxl0wOPhD-9yrDl5G1oGy9uUpbQAAAAVmYWxzZQAAAARub25lAAAACjE3OTM1NzA0MDI",
+    "mac": "rcRz7LSfPRzGZp5puSB3RL6Nd-_NqlMfa8ZWRfBHasQ"
+   }
+  ],
+  "refusals": [
+   {
+    "name": "another Teammate account",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AD",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "mac"
+   },
+   {
+    "name": "another key hash",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "mac"
+   },
+   {
+    "name": "how changed from scan to call",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "call",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "mac"
+   },
+   {
+    "name": "a later time",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570401
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "mac"
+   },
+   {
+    "name": "the MAC of another athlete (another share)",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "PPfelvSK4o3VSimYC6tCiLg08D0-OZEf2Obx7uK-tCk",
+    "expect": "mac"
+   },
+   {
+    "name": "the right share, made under another athlete id",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "jYrKRuK-t4pWTFlwOp01TvmGNPkYNEfanvfg7tcJSuw",
+    "expect": "mac"
+   },
+   {
+    "name": "compared true with how none",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "none",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "compared false with how scan",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": false,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "compared as a string",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": "true",
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "how not one of scan, call, none",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "qr",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "at not a whole number",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400.5
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "an extra field",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400,
+     "note": "x"
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "a hash with padding",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0=",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "a lower-case Teammate id",
+    "record": {
+     "teammateAccountId": "01j8z3v4q6x7r2m9k5t0w1y8ab",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw",
+    "expect": "pin_record"
+   },
+   {
+    "name": "a MAC one byte short",
+    "record": {
+     "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+     "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+     "compared": true,
+     "how": "scan",
+     "at": 1793570400
+    },
+    "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3g",
+    "expect": "mac"
+   }
+  ],
+  "wrap": [
+   {
+    "name": "pinned to this key: wrap",
+    "pin": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793570400
+     },
+     "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw"
+    },
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "expect": null
+   },
+   {
+    "name": "kept without comparing is still a pin: wrap",
+    "pin": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": false,
+      "how": "none",
+      "at": 1793570402
+     },
+     "mac": "rcRz7LSfPRzGZp5puSB3RL6Nd-_NqlMfa8ZWRfBHasQ"
+    },
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "expect": null
+   },
+   {
+    "name": "no pin",
+    "pin": null,
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "expect": "teammate_unpinned"
+   },
+   {
+    "name": "the server sends another key",
+    "pin": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+      "compared": true,
+      "how": "scan",
+      "at": 1793570400
+     },
+     "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw"
+    },
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+    "expect": "teammate_unpinned"
+   },
+   {
+    "name": "a pin the server changed to the other key",
+    "pin": {
+     "record": {
+      "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+      "spkiSha256": "cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+      "compared": true,
+      "how": "scan",
+      "at": 1793570400
+     },
+     "mac": "ju4FFh6YFvP1IVwPunJgO7cTKK2CBqp9sjvrWCkD3iw"
+    },
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+    "expect": "teammate_unpinned"
+   }
+  ]
+ },
+ "code": {
+  "encode": [
+   {
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0"
+   }
+  ],
+  "check": [
+   {
+    "name": "the right code",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "ok"
+   },
+   {
+    "name": "a newline after it",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0\n",
+    "expect": "format"
+   },
+   {
+    "name": "a space before it",
+    "text": " LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "empty",
+    "text": "",
+    "expect": "format"
+   },
+   {
+    "name": "a fifth field",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0:x",
+    "expect": "format"
+   },
+   {
+    "name": "three fields",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "expect": "format"
+   },
+   {
+    "name": "a URL",
+    "text": "https://leaveyouragent.com/LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "the athlete id in lower case",
+    "text": "LEAVE-TM1:01j8z3v4q6x7r2m9k5t0w1y8aa:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "an id with I, L, O or U",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AU:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "an id 25 characters long",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8A:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "an id above the ULID range",
+    "text": "LEAVE-TM1:81J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "the hash with padding",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0=",
+    "expect": "format"
+   },
+   {
+    "name": "a standard-base64 character in the hash",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91a+pKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "format"
+   },
+   {
+    "name": "the hash in a non-canonical spelling (its last character has unused bits set)",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW1",
+    "expect": "format"
+   },
+   {
+    "name": "a 31-byte hash",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKQ",
+    "expect": "format"
+   },
+   {
+    "name": "version 2",
+    "text": "LEAVE-TM2:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "version"
+   },
+   {
+    "name": "the version in lower case",
+    "text": "leave-tm1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "version"
+   },
+   {
+    "name": "a code made for another athlete",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AC:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "athlete"
+   },
+   {
+    "name": "athlete and Teammate ids swapped",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "athlete"
+   },
+   {
+    "name": "a code from another account",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AD:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+    "expect": "teammate"
+   },
+   {
+    "name": "a code from another key",
+    "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:cZ94SH0wNcn5-cdqhILq2F5ktHvW-bGZthQCPe6N3mY",
+    "expect": "key"
+   }
+  ],
+  "receivedKeyChanged": {
+   "name": "the right code, but the server sent this phone another key for the Teammate",
+   "text": "LEAVE-TM1:01J8Z3V4Q6X7R2M9K5T0W1Y8AA:01J8Z3V4Q6X7R2M9K5T0W1Y8AB:1bPwyQq91anpKbRtc8ZdMDj4Q_vcqw5eRtaBsvblKW0",
+   "receivedSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+   "expect": "key"
+  }
+ },
+ "sas": {
+  "cases": [
+   {
+    "name": "an ordinary run",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spkiAsAthleteReceived": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "commitment": "x9ZqBbPpthvySkIPM5x2zaQIvdMo64IWbOL23FfnJkI",
+    "opens": true,
+    "uint32": 1926355534,
+    "digits": "355534",
+    "line": "355 534"
+   },
+   {
+    "name": "digits with a leading zero",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spkiAsAthleteReceived": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "-qfl9oUbVuj1kZpnnSavFON_AU3kNj33AObduD6jgSE",
+    "nT": "LYkmDSmHxWX4cxEVQLiVEgNNQxU99IN33S92UTeIb2I",
+    "commitment": "x8HyTzTX2RMekHmOyR3GRzId5voywPXCZNuiADS-Hxc",
+    "opens": true,
+    "uint32": 1921011592,
+    "digits": "011592",
+    "line": "011 592"
+   },
+   {
+    "name": "the first byte at 0x80 or above",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spkiAsAthleteReceived": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "YTGKaRroCuBHODJCJYbbzp3KymfWUv14jS_iAkSdM0g",
+    "nT": "CyErAfxrqyXwnJuVwvMsbuHAHZU0f_qy19RdGk0RpmU",
+    "commitment": "r3sGgVLZ0pUz5HgnZ8i4DSw5s8V-BawFtcSoYOw7cJE",
+    "opens": true,
+    "uint32": 2440360643,
+    "digits": "360643",
+    "line": "360 643"
+   },
+   {
+    "name": "a value in the last partial block (≥ 4,294,000,000)",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spkiAsAthleteReceived": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "Q88TDsK3fiTXnjBrvWPph9oGkjt-zAD1FrVfvsFvlTc",
+    "nT": "HIWFfxvyLyKWdVemKBWcdt3wb5oy-e6wWEKl-uwu5q8",
+    "commitment": "AOoUkbVVIOReaEOiMZTXE8es-jVueAFJWRMXCZhWEkE",
+    "opens": true,
+    "uint32": 4294415838,
+    "digits": "415838",
+    "line": "415 838"
+   }
+  ],
+  "notOpening": [
+   {
+    "name": "the server gave the athlete another key: the Teammate's phone, with its own key, finds the commitment does not open",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "spkiAsAthleteReceived": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoXg8CRQqzjDLtccQ9Gm_sk0_ej29xzaRz9g0fiZXYLWCcdTUpwgqQAy8MnU18Bo4LbVmd8QRcY030GwcaHgM1Q",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "commitment": "ufa-ZrOm_NBhw3gVVtrKt0mEOjcmuGnRh_66xHO3VG4",
+    "opens": false
+   },
+   {
+    "name": "the server relays another nA than the one committed",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "teammateOwnSpki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3LUPerVnjn9IXonQ39zaUUTinxxFXdsvz0g_eiLn2yhPjkVXzWJD5isPBNx8fkAfXSksQmNO1ziUkfLn0Z8n5A",
+    "nA": "nAo6gGzlOTvNcXChjN1ffxr4doutPr_kljfrtbTve_I",
+    "commitment": "x9ZqBbPpthvySkIPM5x2zaQIvdMo64IWbOL23FfnJkI",
+    "opens": false
+   }
+  ],
+  "binding": [
+   {
+    "name": "another run id",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M3",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "commitment": "7qrvTZOpEqm3xJWpTcEAMgbZ4-iWmbtfsY5q3MN6w2g",
+    "digits": "507029"
+   },
+   {
+    "name": "athlete and Teammate ids swapped",
+    "runId": "01J9A2B3C4D5E6F7G8H9J0K1M2",
+    "athleteAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AB",
+    "teammateAccountId": "01J8Z3V4Q6X7R2M9K5T0W1Y8AA",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "commitment": "IUYTYo4GlMH65UI8RlBPSunzT58Lq-g8qRQS1RlpzyY",
+    "digits": "870215"
+   }
+  ],
+  "lpExample": {
+   "note": "the fields (\"AB\", \"C\") and (\"A\", \"BC\"): equal when joined plainly, different when length-prefixed",
+   "plainJoinEqual": true,
+   "first": {
+    "fields": [
+     "AB",
+     "C"
+    ],
+    "hex": "0000000241420000000143"
+   },
+   "second": {
+    "fields": [
+     "A",
+     "BC"
+    ],
+    "hex": "0000000141000000024243"
+   }
+  },
+  "refusals": [
+   {
+    "name": "nA of 31 bytes",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJg",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "expect": "sas_field"
+   },
+   {
+    "name": "nT of 33 bytes",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68A",
+    "expect": "sas_field"
+   },
+   {
+    "name": "an empty run id",
+    "runId": "",
+    "nA": "LEC1Myz_fxVNohC6ST-9r7VmXBF78lzegSoy3ZVeJv0",
+    "nT": "MzZLMLs3a6XHaG-0thTN0rlPTlgtfgiPD-4rXcACZ68",
+    "expect": "sas_field"
+   }
+  ],
+  "bias": {
+   "note": "digits = uint32 mod 10^6. 2^32 = 4294 × 10^6 + 967296, so the values 000000…967295 each come from 4295 of the 2^32 inputs and 967296…999999 from 4294.",
+   "quotient": 4294,
+   "remainder": 967296,
+   "mostLikelyDigitsProbability": "4295/2^32",
+   "leastLikelyDigitsProbability": "4294/2^32",
+   "relativeBias": "1/4294"
+  }
+ }
+}
