@@ -22,7 +22,6 @@ type NativeCrypto = {
   newRecordKey(type: RecordType, id: string): Promise<{ shareWrappedDek: string }>;
   importShareWrappedDek(type: RecordType, id: string, wire: string): Promise<boolean>;
   importPendingDek(type: RecordType, id: string, wire: string, info: string, accountId: string): Promise<{ shareWrappedDek: string }>;
-  wrapDekTo(type: RecordType, id: string, recipientSpki: string, info: string): Promise<string>;
   encrypt(type: RecordType, id: string, plaintext: string): Promise<string>;
   decrypt(type: RecordType, id: string, wire: string): Promise<string>;
   encryptFile(type: RecordType, id: string, srcPath: string, dstPath: string): Promise<{ sha256: string; sizeBytes: number }>;
@@ -88,7 +87,6 @@ export const crypto = {
   importShareWrappedDek: async (type: RecordType, id: string, wire: string) => (await forAccount()).importShareWrappedDek(type, id, wire),
   importPendingDek: async (type: RecordType, id: string, wire: string, info: string, accountId: string) =>
     (await forAccount()).importPendingDek(type, id, wire, info, accountId),
-  wrapDekTo: (type: RecordType, id: string, recipientSpki: string, info: string) => must().wrapDekTo(type, id, recipientSpki, info),
   encrypt: (type: RecordType, id: string, plaintext: string) => must().encrypt(type, id, plaintext),
   decrypt: (type: RecordType, id: string, wire: string) => must().decrypt(type, id, wire),
   encryptFile: (type: RecordType, id: string, srcPath: string, dstPath: string) => must().encryptFile(type, id, srcPath, dstPath),

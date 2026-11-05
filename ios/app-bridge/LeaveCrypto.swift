@@ -21,7 +21,7 @@ import Security
 ///   newRecordKey(type, id)                           → { shareWrappedDek }
 ///   importShareWrappedDek(type, id, wire)            → true
 ///   importPendingDek(type, id, wire, info, accountId)→ { shareWrappedDek }   (HPKE to the account key)
-///   wrapDekTo(type, id, recipientSpki, info)         → HPKE wire (Teammate wrap)
+///   (The Teammate wrap is LeaveTeammate's wrapDekToTeammate, only under the pin: P3-3.)
 ///   encrypt(type, id, plaintext) / decrypt(type, id, wire)
 ///   encryptFile(type, id, srcPath, dstPath)          → { sha256, sizeBytes }
 ///   decryptFile(type, id, srcPath, dstPath)          → { sizeBytes }
@@ -81,6 +81,12 @@ final class LeaveCrypto: NSObject, RCTBridgeModule {
     }
     return a
   }
+
+  /// The signed-in account's id, for the Teammate module (LeaveTeammate.swift).
+  static func currentAccount() throws -> String { try current() }
+
+  /// A record's data key, for the Teammate module's pinned wrap; it never leaves native code.
+  static func recordKey(_ type: String, _ id: String) throws -> Data { try dek(type, id) }
 
   private static func shareQuery(_ slot: String) -> [String: Any] {
     [
@@ -273,14 +279,6 @@ final class LeaveCrypto: NSObject, RCTBridgeModule {
       Self.remember(type, id, dek)
       let rewrapped = try LeaveCryptoCore.shareWrap(share: s, recordType: type, recordId: id, dek: dek)
       resolve(["shareWrappedDek": LeaveCryptoCore.base64url(rewrapped)])
-    } catch { reject("crypto", error.localizedDescription, error) }
-  }
-
-  @objc func wrapDekTo(_ type: String, id: String, recipientSpki: String, info: String, resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
-    do {
-      guard let spki = LeaveCryptoCore.fromBase64url(recipientSpki) else { throw LeaveCryptoCore.Failure.badPublicKey }
-      let wire = try LeaveCryptoCore.hpkeSeal(recipientSpki: spki, info: info, plaintext: try Self.dek(type, id))
-      resolve(LeaveCryptoCore.base64url(wire))
     } catch { reject("crypto", error.localizedDescription, error) }
   }
 

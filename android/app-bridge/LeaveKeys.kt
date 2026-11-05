@@ -61,6 +61,9 @@ class LeaveKeys(
   @Synchronized
   private fun current(): String = account?.takeIf { it.isNotEmpty() } ?: throw Refused("No Leave account is signed in on this phone.")
 
+  /** The signed-in account's id, for the Teammate module (LeaveTeammate.kt). */
+  fun currentAccount(): String = current()
+
   /**
    * The signed-in account's own share, and nothing else. It is created only by `ensureShare`
    * (the first phone on an account); everything else fails rather than mint a second one.

@@ -470,4 +470,209 @@ object LeaveCryptoCore {
     val number = digest.take(4).fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xff) }
     return "%06d".format(number % 1_000_000)
   }
+
+  // Teammate key (teammate-v1.json; P3-3 4.2–4.4), function for function the Swift: the pin, the
+  // Teammate's code and six digits on a call.
+
+  /** Why a Teammate step was refused; the text is the vectors' name for it. */
+  class TeammateRefusal(val reason: String) : Exception(reason)
+
+  data class TeammatePinRecord(val teammateAccountId: String, val spkiSha256: String, val compared: Boolean, val how: String, val at: Long)
+
+  data class TeammatePin(val record: TeammatePinRecord, val mac: String)
+
+  const val TEAMMATE_PIN_LABEL = "leave:v1:teammate-pin"
+  val TEAMMATE_ZERO_HASH = "A".repeat(43)
+  private const val CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+  private val B64URL = Regex("^[A-Za-z0-9_-]{43}$")
+
+  /** Each field as a 4-byte big-endian length, then its bytes. */
+  fun lengthPrefixed(fields: List<ByteArray>): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    for (f in fields) {
+      out.write(byteArrayOf((f.size ushr 24).toByte(), (f.size ushr 16).toByte(), (f.size ushr 8).toByte(), f.size.toByte()))
+      out.write(f)
+    }
+    return out.toByteArray()
+  }
+
+  /** 26 characters of Crockford base32, upper case, first character 0–7. */
+  fun isUlid(s: String): Boolean = s.length == 26 && s[0] in '0'..'7' && s.all { it in CROCKFORD }
+
+  /** The 32 bytes of a hash written as 43 base64url characters, only in its canonical spelling. */
+  fun hash32(s: String): ByteArray? {
+    if (!B64URL.matches(s)) return null
+    val d = fromBase64url(s) ?: return null
+    return if (d.size == 32 && base64url(d) == s) d else null
+  }
+
+  fun teammatePinRecordValid(r: TeammatePinRecord): Boolean {
+    if (!isUlid(r.teammateAccountId) || hash32(r.spkiSha256) == null || r.at < 0) return false
+    val hows = if (r.compared) listOf("scan", "call") else listOf("none", "removed")
+    return r.how in hows && (r.how == "removed") == (r.spkiSha256 == TEAMMATE_ZERO_HASH)
+  }
+
+  fun teammatePinKey(share: ByteArray, athleteAccountId: String): ByteArray = hkdf(share, utf8(athleteAccountId), utf8(TEAMMATE_PIN_LABEL), 32)
+
+  fun teammatePinMacInput(r: TeammatePinRecord): ByteArray =
+      lengthPrefixed(listOf(utf8(TEAMMATE_PIN_LABEL), utf8(r.teammateAccountId), hash32(r.spkiSha256) ?: ByteArray(0), utf8(if (r.compared) "true" else "false"), utf8(r.how), utf8(r.at.toString())))
+
+  fun teammatePinMac(share: ByteArray, athleteAccountId: String, record: TeammatePinRecord): ByteArray {
+    if (!teammatePinRecordValid(record)) throw TeammateRefusal("pin_record")
+    return hmac(teammatePinKey(share, athleteAccountId), teammatePinMacInput(record))
+  }
+
+  fun verifyTeammatePin(share: ByteArray, athleteAccountId: String, pin: TeammatePin): Boolean {
+    if (!teammatePinRecordValid(pin.record)) return false
+    val mac = hash32(pin.mac) ?: return false
+    return MessageDigest.isEqual(mac, teammatePinMac(share, athleteAccountId, pin.record))
+  }
+
+  /**
+   * A pin record from its JSON text, read strictly: one flat object with exactly the five keys,
+   * strings without escapes, `compared` true or false, and `at` as a plain integer (no fraction,
+   * exponent or sign, so 1793570400.0 is refused). Null for anything else (pin_record).
+   */
+  fun parseTeammatePinRecord(text: String): TeammatePinRecord? {
+    var i = 0
+    fun ws() { while (i < text.length && text[i] in " \t\n\r") i++ }
+    fun str(): String? {
+      if (i >= text.length || text[i] != '"') return null
+      val start = ++i
+      while (i < text.length && text[i] != '"') {
+        if (text[i] == '\\' || text[i] < ' ') return null
+        i++
+      }
+      if (i >= text.length) return null
+      return text.substring(start, i++)
+    }
+    val fields = HashMap<String, Any>()
+    ws()
+    if (i >= text.length || text[i] != '{') return null
+    i++
+    ws()
+    while (true) {
+      val key = str() ?: return null
+      if (key in fields) return null
+      ws()
+      if (i >= text.length || text[i] != ':') return null
+      i++
+      ws()
+      if (i >= text.length) return null
+      when {
+        text[i] == '"' -> fields[key] = str() ?: return null
+        text.startsWith("true", i) -> { fields[key] = true; i += 4 }
+        text.startsWith("false", i) -> { fields[key] = false; i += 5 }
+        else -> {
+          val start = i
+          while (i < text.length && (text[i] in '0'..'9' || text[i] in "-+.eE")) i++
+          val token = text.substring(start, i)
+          if (token.isEmpty() || !token.all { it in '0'..'9' } || (token != "0" && token[0] == '0') || token.length > 16) return null
+          val n = token.toLong()
+          if (n > 9_007_199_254_740_991L) return null
+          fields[key] = n
+        }
+      }
+      ws()
+      if (i >= text.length) return null
+      if (text[i] == ',') { i++; ws(); continue }
+      if (text[i] != '}') return null
+      i++
+      break
+    }
+    ws()
+    if (i != text.length || fields.size != 5) return null
+    val r = TeammatePinRecord(
+        fields["teammateAccountId"] as? String ?: return null,
+        fields["spkiSha256"] as? String ?: return null,
+        fields["compared"] as? Boolean ?: return null,
+        fields["how"] as? String ?: return null,
+        fields["at"] as? Long ?: return null)
+    return if (teammatePinRecordValid(r)) r else null
+  }
+
+  /** The record's JSON text as this phone writes it: fixed key order, `at` a plain integer. */
+  fun teammatePinRecordJson(r: TeammatePinRecord): String =
+      "{\"teammateAccountId\":\"${r.teammateAccountId}\",\"spkiSha256\":\"${r.spkiSha256}\",\"compared\":${r.compared},\"how\":\"${r.how}\",\"at\":${r.at}}"
+
+  /**
+   * A served pin against the newest pin this phone has seen (its cache, null if none). A newer pin
+   * made with this share replaces the cache whatever Teammate it names; the identical pin changes
+   * nothing; any other is refused and the cache stays. The server can't clear or lower it.
+   * Returns the result (accepted, same, pin_older, pin_record or mac) and the cache after.
+   */
+  fun acceptServedTeammatePin(share: ByteArray, athleteAccountId: String, cache: TeammatePin?, servedRecordJson: String, servedMac: String): Pair<String, TeammatePin?> {
+    val record = parseTeammatePinRecord(servedRecordJson) ?: return "pin_record" to cache
+    val served = TeammatePin(record, servedMac)
+    if (!verifyTeammatePin(share, athleteAccountId, served)) return "mac" to cache
+    if (cache == null) return "accepted" to served
+    if (served == cache) return "same" to cache
+    return if (served.record.at > cache.record.at) "accepted" to served else "pin_older" to cache
+  }
+
+  /** The `at` of a pin this phone writes, after fetching and verifying the server's current pin. */
+  fun teammatePinWriteAt(nowSeconds: Long, newestSeenAt: Long?): Long = if (newestSeenAt == null) nowSeconds else maxOf(nowSeconds, newestSeenAt + 1)
+
+  /** The wrap gate, on the newest pin the phone holds. Null means the wrap may go ahead. */
+  fun teammateWrapRefusal(share: ByteArray, athleteAccountId: String, pin: TeammatePin?, spki: ByteArray): String? {
+    if (pin == null || !verifyTeammatePin(share, athleteAccountId, pin)) return "teammate_unpinned"
+    if (pin.record.how == "removed") return "teammate_removed"
+    val pinned = hash32(pin.record.spkiSha256) ?: return "teammate_unpinned"
+    return if (MessageDigest.isEqual(pinned, sha256(spki))) null else "teammate_unpinned"
+  }
+
+  // The Teammate's code: LEAVE-TM1:<athlete>:<teammate>:<SHA-256 of the Teammate's own key>.
+
+  const val TEAMMATE_CODE_VERSION = "LEAVE-TM1"
+
+  fun teammateCode(athleteAccountId: String, teammateAccountId: String, ownSpki: ByteArray): String? =
+      if (isUlid(athleteAccountId) && isUlid(teammateAccountId)) "$TEAMMATE_CODE_VERSION:$athleteAccountId:$teammateAccountId:${base64url(sha256(ownSpki))}" else null
+
+  /** Null for a match, else the first failure in order: format, version, athlete, teammate, key. */
+  fun checkTeammateCode(text: String, myAccountId: String, teammateAccountId: String, receivedSpki: ByteArray): String? {
+    if (text.isEmpty() || !text.all { it in '\u0021'..'\u007e' }) return "format"
+    val parts = text.split(":")
+    if (parts.size != 4) return "format"
+    if (parts[0] != TEAMMATE_CODE_VERSION) return "version"
+    if (!isUlid(parts[1]) || !isUlid(parts[2])) return "format"
+    val h = hash32(parts[3]) ?: return "format"
+    if (parts[1] != myAccountId) return "athlete"
+    if (parts[2] != teammateAccountId) return "teammate"
+    if (!MessageDigest.isEqual(h, sha256(receivedSpki))) return "key"
+    return null
+  }
+
+  // Six digits on a call: A commits, T answers with nT, A reveals nA, both show the digits.
+
+  const val SAS_COMMIT_LABEL = "leave:v1:teammate-sas-commit"
+  const val SAS_LABEL = "leave:v1:teammate-sas"
+
+  data class SasIds(val runId: String, val athleteAccountId: String, val teammateAccountId: String)
+
+  private fun sasFields(ids: SasIds): List<ByteArray> {
+    if (!isUlid(ids.runId) || !isUlid(ids.athleteAccountId) || !isUlid(ids.teammateAccountId)) throw TeammateRefusal("sas_field")
+    return listOf(utf8(ids.runId), utf8(ids.athleteAccountId), utf8(ids.teammateAccountId))
+  }
+
+  fun sasCommit(ids: SasIds, teammateSpki: ByteArray, nA: ByteArray): ByteArray {
+    if (nA.size != 32) throw TeammateRefusal("sas_field")
+    return sha256(lengthPrefixed(listOf(utf8(SAS_COMMIT_LABEL)) + sasFields(ids) + listOf(teammateSpki, nA)))
+  }
+
+  /** The Teammate's phone's check of the revealed nA with its own key: false means no digits. */
+  fun sasOpens(ids: SasIds, ownSpki: ByteArray, nA: ByteArray, commitment: ByteArray): Boolean {
+    val c = sasCommit(ids, ownSpki, nA)
+    return commitment.size == 32 && MessageDigest.isEqual(c, commitment)
+  }
+
+  /** The first 4 bytes of the hash as an unsigned big-endian number, mod 10^6, as 6 digits. */
+  fun sasDigits(ids: SasIds, teammateSpki: ByteArray, nA: ByteArray, nT: ByteArray): Pair<Long, String> {
+    if (nA.size != 32 || nT.size != 32) throw TeammateRefusal("sas_field")
+    val d = sha256(lengthPrefixed(listOf(utf8(SAS_LABEL)) + sasFields(ids) + listOf(teammateSpki, nA, nT)))
+    val n = d.take(4).fold(0L) { acc, b -> (acc shl 8) or (b.toLong() and 0xff) }
+    return n to "%06d".format(n % 1_000_000)
+  }
+
+  /** "482913" → "482 913". */
+  fun sasLine(digits: String): String = "${digits.take(3)} ${digits.drop(3)}"
 }

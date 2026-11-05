@@ -254,4 +254,131 @@ final class LeaveCryptoTests: XCTestCase {
     XCTAssertLessThan(LeaveCryptoCore.stripSpkiHeaderIfRSA(try b(try s(c, "rsaPublicKeySpki"))).count, (try b(try s(c, "rsaPublicKeySpki"))).count)
     XCTAssertLessThan(LeaveCryptoCore.stripPkcs8HeaderIfRSA(try b(try s(c, "rsaPrivateKeyPkcs8"))).count, (try b(try s(c, "rsaPrivateKeyPkcs8"))).count)
   }
+
+  // MARK: - Teammate key (Vectors/teammate-v1.json, from leave-crypto's vectors-teammate-v1)
+
+  private func teammateVectors() throws -> [String: Any] {
+    let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Vectors/teammate-v1.json")
+    return try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+  }
+
+  /// A record from the vectors, as the JSON text a phone would read (key order as written).
+  private func recordJson(_ r: Any) throws -> String {
+    String(decoding: try JSONSerialization.data(withJSONObject: r, options: [.sortedKeys, .withoutEscapingSlashes]), as: UTF8.self)
+  }
+
+  private func pinOf(_ p: Any?) throws -> LeaveCryptoCore.TeammatePin? {
+    guard let p = p as? [String: Any] else { return nil }
+    let record = try XCTUnwrap(LeaveCryptoCore.parseTeammatePinRecord(try recordJson(try XCTUnwrap(p["record"]))))
+    return LeaveCryptoCore.TeammatePin(record: record, mac: try s(p, "mac"))
+  }
+
+  func testTeammatePin() throws {
+    let v = try teammateVectors()
+    let keys = try XCTUnwrap(v["keys"] as? [String: Any]), athlete = try XCTUnwrap(keys["athlete"] as? [String: Any])
+    let share = try b(try s(athlete, "share")), A = try s(athlete, "accountId")
+    let pin = try XCTUnwrap(v["pin"] as? [String: Any])
+    for c in try XCTUnwrap(pin["cases"] as? [[String: Any]]) {
+      let name = c["name"] as? String ?? ""
+      let record = try XCTUnwrap(LeaveCryptoCore.parseTeammatePinRecord(try recordJson(try XCTUnwrap(c["record"]))), name)
+      XCTAssertEqual(LeaveCryptoCore.base64url(LeaveCryptoCore.teammatePinMacInput(record)), try s(c, "macInput"), name)
+      XCTAssertEqual(LeaveCryptoCore.base64url(try LeaveCryptoCore.teammatePinMac(share: share, athleteAccountId: A, record: record)), try s(c, "mac"), name)
+      XCTAssertTrue(LeaveCryptoCore.verifyTeammatePin(share: share, athleteAccountId: A, pin: .init(record: record, mac: try s(c, "mac"))), name)
+      // What this phone writes reads back the same.
+      XCTAssertEqual(LeaveCryptoCore.parseTeammatePinRecord(LeaveCryptoCore.teammatePinRecordJson(record)), record, name)
+    }
+    for r in try XCTUnwrap(pin["refusals"] as? [[String: Any]]) {
+      let name = r["name"] as? String ?? ""
+      let got: String?
+      if let record = LeaveCryptoCore.parseTeammatePinRecord(try recordJson(try XCTUnwrap(r["record"]))) {
+        got = LeaveCryptoCore.verifyTeammatePin(share: share, athleteAccountId: A, pin: .init(record: record, mac: try s(r, "mac"))) ? nil : "mac"
+      } else {
+        got = "pin_record"
+      }
+      XCTAssertEqual(got, r["expect"] as? String, name)
+    }
+    for w in try XCTUnwrap(pin["wrap"] as? [[String: Any]]) {
+      let name = w["name"] as? String ?? ""
+      let got = LeaveCryptoCore.teammateWrapRefusal(share: share, athleteAccountId: A, pin: try pinOf(w["pin"]), spki: try b(try s(w, "spki")))
+      XCTAssertEqual(got?.rawValue, w["expect"] as? String, name)
+    }
+    for j in try XCTUnwrap(pin["jsonText"] as? [[String: Any]]) {
+      let name = j["name"] as? String ?? ""
+      let record = LeaveCryptoCore.parseTeammatePinRecord(try s(j, "text"))
+      XCTAssertEqual(record == nil ? "pin_record" : nil, j["expect"] as? String, name)
+      if let record { XCTAssertTrue(LeaveCryptoCore.verifyTeammatePin(share: share, athleteAccountId: A, pin: .init(record: record, mac: try s(j, "mac"))), name) }
+    }
+    var cache: LeaveCryptoCore.TeammatePin?
+    for st in try XCTUnwrap(pin["cache"] as? [[String: Any]]) {
+      let name = st["name"] as? String ?? ""
+      XCTAssertEqual(try pinOf(st["cache"]), cache, "the cache before: \(name)")
+      let served = try XCTUnwrap(st["served"] as? [String: Any])
+      let (result, next) = LeaveCryptoCore.acceptServedTeammatePin(share: share, athleteAccountId: A, cache: cache, servedRecordJson: try recordJson(try XCTUnwrap(served["record"])), servedMac: try s(served, "mac"))
+      XCTAssertEqual(result.rawValue, st["expect"] as? String, name)
+      XCTAssertEqual(next, try pinOf(st["expectCache"]), name)
+      if let after = st["wrapAfter"] as? [String: Any] {
+        XCTAssertEqual(LeaveCryptoCore.teammateWrapRefusal(share: share, athleteAccountId: A, pin: next, spki: try b(try s(after, "spki")))?.rawValue, after["expect"] as? String, name)
+      }
+      cache = next
+    }
+    for w in try XCTUnwrap(pin["writeAt"] as? [[String: Any]]) {
+      let seen = (w["newestSeenAt"] as? NSNumber)?.int64Value
+      XCTAssertEqual(LeaveCryptoCore.teammatePinWriteAt(nowSeconds: try XCTUnwrap(w["nowSeconds"] as? NSNumber).int64Value, newestSeenAt: seen), try XCTUnwrap(w["at"] as? NSNumber).int64Value, w["name"] as? String ?? "")
+    }
+  }
+
+  func testTeammateCode() throws {
+    let v = try teammateVectors()
+    let keys = try XCTUnwrap(v["keys"] as? [String: Any])
+    let A = try s(try XCTUnwrap(keys["athlete"] as? [String: Any]), "accountId")
+    let teammate = try XCTUnwrap(keys["teammate"] as? [String: Any]), TM = try s(teammate, "accountId"), kT = try b(try s(teammate, "publicKeySpki"))
+    let code = try XCTUnwrap(v["code"] as? [String: Any])
+    for e in try XCTUnwrap(code["encode"] as? [[String: Any]]) {
+      XCTAssertEqual(LeaveCryptoCore.teammateCode(athleteAccountId: try s(e, "athleteAccountId"), teammateAccountId: try s(e, "teammateAccountId"), ownSpki: try b(try s(e, "spki"))), try s(e, "text"))
+    }
+    for c in try XCTUnwrap(code["check"] as? [[String: Any]]) {
+      let got = LeaveCryptoCore.checkTeammateCode(try s(c, "text"), myAccountId: A, teammateAccountId: TM, receivedSpki: kT)
+      XCTAssertEqual(got ?? "ok", try s(c, "expect"), c["name"] as? String ?? "")
+    }
+    let changed = try XCTUnwrap(code["receivedKeyChanged"] as? [String: Any])
+    XCTAssertEqual(LeaveCryptoCore.checkTeammateCode(try s(changed, "text"), myAccountId: A, teammateAccountId: TM, receivedSpki: try b(try s(changed, "receivedSpki"))), try s(changed, "expect"))
+  }
+
+  func testTeammateSas() throws {
+    let v = try teammateVectors()
+    let kT = try b(try s(try XCTUnwrap((v["keys"] as? [String: Any])?["teammate"] as? [String: Any]), "publicKeySpki"))
+    let sas = try XCTUnwrap(v["sas"] as? [String: Any])
+    func ids(_ c: [String: Any]) throws -> LeaveCryptoCore.SasIds { .init(runId: try s(c, "runId"), athleteAccountId: try s(c, "athleteAccountId"), teammateAccountId: try s(c, "teammateAccountId")) }
+    for c in try XCTUnwrap(sas["cases"] as? [[String: Any]]) {
+      let name = c["name"] as? String ?? "", nA = try b(try s(c, "nA")), nT = try b(try s(c, "nT"))
+      let commitment = try LeaveCryptoCore.sasCommit(ids: try ids(c), teammateSpki: try b(try s(c, "spkiAsAthleteReceived")), nA: nA)
+      XCTAssertEqual(LeaveCryptoCore.base64url(commitment), try s(c, "commitment"), name)
+      XCTAssertEqual(try LeaveCryptoCore.sasOpens(ids: try ids(c), ownSpki: try b(try s(c, "teammateOwnSpki")), nA: nA, commitment: commitment), c["opens"] as? Bool, name)
+      let n = try LeaveCryptoCore.sasDigits(ids: try ids(c), teammateSpki: try b(try s(c, "teammateOwnSpki")), nA: nA, nT: nT)
+      XCTAssertEqual(Int64(n.number), try XCTUnwrap(c["uint32"] as? NSNumber).int64Value, name)
+      XCTAssertEqual(n.digits, try s(c, "digits"), name)
+      XCTAssertEqual(LeaveCryptoCore.sasLine(n.digits), try s(c, "line"), name)
+    }
+    for c in try XCTUnwrap(sas["notOpening"] as? [[String: Any]]) {
+      XCTAssertEqual(try LeaveCryptoCore.sasOpens(ids: try ids(c), ownSpki: try b(try s(c, "teammateOwnSpki")), nA: try b(try s(c, "nA")), commitment: try b(try s(c, "commitment"))), c["opens"] as? Bool, c["name"] as? String ?? "")
+    }
+    for c in try XCTUnwrap(sas["binding"] as? [[String: Any]]) {
+      let name = c["name"] as? String ?? ""
+      XCTAssertEqual(LeaveCryptoCore.base64url(try LeaveCryptoCore.sasCommit(ids: try ids(c), teammateSpki: kT, nA: try b(try s(c, "nA")))), try s(c, "commitment"), name)
+      XCTAssertEqual(try LeaveCryptoCore.sasDigits(ids: try ids(c), teammateSpki: kT, nA: try b(try s(c, "nA")), nT: try b(try s(c, "nT"))).digits, try s(c, "digits"), name)
+    }
+    let lp = try XCTUnwrap(sas["lpExample"] as? [String: Any])
+    for k in ["first", "second"] {
+      let e = try XCTUnwrap(lp[k] as? [String: Any]), fields = try XCTUnwrap(e["fields"] as? [String])
+      XCTAssertEqual(LeaveCryptoCore.lengthPrefixed(fields.map { Data($0.utf8) }).map { String(format: "%02x", $0) }.joined(), try s(e, "hex"))
+    }
+    let base = try XCTUnwrap((sas["cases"] as? [[String: Any]])?.first)
+    for r in try XCTUnwrap(sas["refusals"] as? [[String: Any]]) {
+      let runId = try (r["runId"] as? String) ?? s(base, "runId")
+      let i = LeaveCryptoCore.SasIds(runId: runId, athleteAccountId: try s(base, "athleteAccountId"), teammateAccountId: try s(base, "teammateAccountId"))
+      XCTAssertThrowsError(try LeaveCryptoCore.sasDigits(ids: i, teammateSpki: kT, nA: try b(try s(r, "nA")), nT: try b(try s(r, "nT"))), r["name"] as? String ?? "") {
+        XCTAssertEqual(($0 as? LeaveCryptoCore.TeammateRefusal)?.rawValue, r["expect"] as? String)
+      }
+    }
+  }
 }

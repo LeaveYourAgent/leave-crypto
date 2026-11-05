@@ -49,8 +49,10 @@ final class LeaveDeviceKey: NSObject, RCTBridgeModule {
     let context = LAContext()
     context.localizedReason = reason
     do {
-      let key = try Self.loadOrCreate(context: context)
-      resolve(Self.base64url(try key.signature(for: data)))
+      let signature = try LeaveProtect.duringOwnPrompt {
+        try Self.loadOrCreate(context: context).signature(for: data)
+      }
+      resolve(Self.base64url(signature))
     } catch {
       reject("device_key", Self.explain(error), error)
     }
@@ -134,7 +136,9 @@ final class LeaveDeviceKey: NSObject, RCTBridgeModule {
   static func openWrappedShare(wire: Data, info: String, reason: String) throws -> Data {
     let context = LAContext()
     context.localizedReason = reason
-    return try loadOrCreateAgreement(context: context).open(wire: wire, info: info)
+    return try LeaveProtect.duringOwnPrompt {
+      try loadOrCreateAgreement(context: context).open(wire: wire, info: info)
+    }
   }
 
   // MARK: - Key lifecycle

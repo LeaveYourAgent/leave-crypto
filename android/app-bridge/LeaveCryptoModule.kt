@@ -90,10 +90,6 @@ class LeaveCryptoModule(context: ReactApplicationContext) : ReactContextBaseJava
       answer(promise) { wrapped(keys.importPendingDek(type, id, bytes(wire), info, accountId)) }
 
   @ReactMethod
-  fun wrapDekTo(type: String, id: String, recipientSpki: String, info: String, promise: Promise) =
-      answer(promise) { core.base64url(core.hpkeSeal(bytes(recipientSpki, "Public key is malformed."), info, keys.dek(type, id))) }
-
-  @ReactMethod
   fun encrypt(type: String, id: String, plaintext: String, promise: Promise) =
       answer(promise) { core.base64url(core.seal(keys.dek(type, id), bytes(plaintext), core.aad(type, id))) }
 

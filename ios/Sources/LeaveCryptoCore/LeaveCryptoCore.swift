@@ -325,6 +325,252 @@ enum LeaveCryptoCore {
     return Data(base64Encoded: b)
   }
 
+  // MARK: - Teammate key (teammate-v1.json; P3-3 4.2–4.4)
+  //
+  // Three things the athlete's phone and the Teammate's phone check between themselves, so the
+  // server can't put another key in the Teammate's place: the pin (the key the athlete's phone
+  // keeps, with a MAC under a key from the share), the Teammate's code (the QR when the two are
+  // together) and six digits on a call (a commit-reveal exchange the server only relays).
+
+  enum TeammateRefusal: String, Error {
+    case pinRecord = "pin_record"
+    case mac
+    case pinOlder = "pin_older"
+    case unpinned = "teammate_unpinned"
+    case removed = "teammate_removed"
+    case sasField = "sas_field"
+  }
+
+  /// `{teammateAccountId, spkiSha256, compared, how, at}`: compared by a scan or on a call,
+  /// kept without comparing, or the Teammate removed (the zero hash).
+  struct TeammatePinRecord: Equatable {
+    let teammateAccountId: String
+    let spkiSha256: String
+    let compared: Bool
+    let how: String
+    let at: Int64
+  }
+
+  struct TeammatePin: Equatable {
+    let record: TeammatePinRecord
+    let mac: String
+  }
+
+  enum PinAccept: String { case accepted, same, pinOlder = "pin_older", pinRecord = "pin_record", mac }
+
+  static let teammatePinLabel = "leave:v1:teammate-pin"
+  static let teammateZeroHash = String(repeating: "A", count: 43)
+  private static let crockford = Set("0123456789ABCDEFGHJKMNPQRSTVWXYZ")
+
+  /// Each field as a 4-byte big-endian length, then its bytes.
+  static func lengthPrefixed(_ fields: [Data]) -> Data {
+    var out = Data()
+    for f in fields {
+      var n = UInt32(f.count).bigEndian
+      out.append(Data(bytes: &n, count: 4))
+      out.append(f)
+    }
+    return out
+  }
+
+  /// 26 characters of Crockford base32, upper case, first character 0–7.
+  static func isUlid(_ s: String) -> Bool {
+    guard s.utf8.count == 26, let first = s.first, ("0"..."7").contains(first) else { return false }
+    return s.allSatisfy { crockford.contains($0) }
+  }
+
+  /// The 32 bytes of a hash written as 43 base64url characters, only in its canonical spelling.
+  static func hash32(_ s: String) -> Data? {
+    guard s.utf8.count == 43, s.utf8.allSatisfy({ ($0 >= 0x41 && $0 <= 0x5a) || ($0 >= 0x61 && $0 <= 0x7a) || ($0 >= 0x30 && $0 <= 0x39) || $0 == 0x2d || $0 == 0x5f }),
+          let d = fromBase64url(s), d.count == 32, base64url(d) == s else { return nil }
+    return d
+  }
+
+  static func teammatePinRecordValid(_ r: TeammatePinRecord) -> Bool {
+    guard isUlid(r.teammateAccountId), hash32(r.spkiSha256) != nil, r.at >= 0 else { return false }
+    let hows = r.compared ? ["scan", "call"] : ["none", "removed"]
+    return hows.contains(r.how) && (r.how == "removed") == (r.spkiSha256 == teammateZeroHash)
+  }
+
+  static func teammatePinKey(share: Data, athleteAccountId: String) -> SymmetricKey {
+    HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: share), salt: Data(athleteAccountId.utf8), info: Data(teammatePinLabel.utf8), outputByteCount: 32)
+  }
+
+  static func teammatePinMacInput(_ r: TeammatePinRecord) -> Data {
+    lengthPrefixed([Data(teammatePinLabel.utf8), Data(r.teammateAccountId.utf8), hash32(r.spkiSha256) ?? Data(), Data((r.compared ? "true" : "false").utf8), Data(r.how.utf8), Data(String(r.at).utf8)])
+  }
+
+  static func teammatePinMac(share: Data, athleteAccountId: String, record: TeammatePinRecord) throws -> Data {
+    guard teammatePinRecordValid(record) else { throw TeammateRefusal.pinRecord }
+    return Data(HMAC<SHA256>.authenticationCode(for: teammatePinMacInput(record), using: teammatePinKey(share: share, athleteAccountId: athleteAccountId)))
+  }
+
+  static func verifyTeammatePin(share: Data, athleteAccountId: String, pin: TeammatePin) -> Bool {
+    guard teammatePinRecordValid(pin.record), let mac = hash32(pin.mac) else { return false }
+    // isValidAuthenticationCode compares in constant time.
+    return HMAC<SHA256>.isValidAuthenticationCode(mac, authenticating: teammatePinMacInput(pin.record), using: teammatePinKey(share: share, athleteAccountId: athleteAccountId))
+  }
+
+  /// A pin record from its JSON text, read strictly: one flat object with exactly the five keys,
+  /// strings without escapes, `compared` true or false, and `at` as a plain integer (no fraction,
+  /// exponent or sign, so 1793570400.0 is refused). nil for anything else (pin_record).
+  static func parseTeammatePinRecord(_ text: String) -> TeammatePinRecord? {
+    let b = [UInt8](text.utf8)
+    var i = 0
+    func ws() { while i < b.count, [0x20, 0x09, 0x0a, 0x0d].contains(b[i]) { i += 1 } }
+    func str() -> String? {
+      guard i < b.count, b[i] == 0x22 else { return nil }
+      i += 1
+      let start = i
+      while i < b.count, b[i] != 0x22 {
+        if b[i] == 0x5c || b[i] < 0x20 { return nil }
+        i += 1
+      }
+      guard i < b.count else { return nil }
+      defer { i += 1 }
+      return String(decoding: b[start..<i], as: UTF8.self)
+    }
+    var fields: [String: Any] = [:]
+    ws()
+    guard i < b.count, b[i] == 0x7b else { return nil }
+    i += 1
+    ws()
+    while true {
+      guard let key = str(), fields[key] == nil else { return nil }
+      ws()
+      guard i < b.count, b[i] == 0x3a else { return nil }
+      i += 1
+      ws()
+      guard i < b.count else { return nil }
+      if b[i] == 0x22 {
+        guard let s = str() else { return nil }
+        fields[key] = s
+      } else if text.utf8.dropFirst(i).starts(with: "true".utf8) {
+        fields[key] = true; i += 4
+      } else if text.utf8.dropFirst(i).starts(with: "false".utf8) {
+        fields[key] = false; i += 5
+      } else {
+        let start = i
+        while i < b.count, (b[i] >= 0x30 && b[i] <= 0x39) || [0x2d, 0x2b, 0x2e, 0x65, 0x45].contains(b[i]) { i += 1 }
+        let token = String(decoding: b[start..<i], as: UTF8.self)
+        guard !token.isEmpty, token.utf8.allSatisfy({ $0 >= 0x30 && $0 <= 0x39 }), token == "0" || token.first != "0",
+              token.count <= 16, let n = Int64(token), n <= 9_007_199_254_740_991 else { return nil }
+        fields[key] = n
+      }
+      ws()
+      guard i < b.count else { return nil }
+      if b[i] == 0x2c { i += 1; ws(); continue }
+      guard b[i] == 0x7d else { return nil }
+      i += 1
+      break
+    }
+    ws()
+    guard i == b.count, fields.count == 5,
+          let id = fields["teammateAccountId"] as? String, let hash = fields["spkiSha256"] as? String,
+          let compared = fields["compared"] as? Bool, let how = fields["how"] as? String, let at = fields["at"] as? Int64 else { return nil }
+    let r = TeammatePinRecord(teammateAccountId: id, spkiSha256: hash, compared: compared, how: how, at: at)
+    return teammatePinRecordValid(r) ? r : nil
+  }
+
+  /// The record's JSON text as this phone writes it: fixed key order, `at` a plain integer.
+  static func teammatePinRecordJson(_ r: TeammatePinRecord) -> String {
+    "{\"teammateAccountId\":\"\(r.teammateAccountId)\",\"spkiSha256\":\"\(r.spkiSha256)\",\"compared\":\(r.compared),\"how\":\"\(r.how)\",\"at\":\(r.at)}"
+  }
+
+  /// A served pin against the newest pin this phone has seen (its cache, nil if none). A newer
+  /// pin made with this share replaces the cache whatever Teammate it names; the identical pin
+  /// changes nothing; any other is refused and the cache stays. The server can't clear or lower it.
+  static func acceptServedTeammatePin(share: Data, athleteAccountId: String, cache: TeammatePin?, servedRecordJson: String, servedMac: String) -> (PinAccept, TeammatePin?) {
+    guard let record = parseTeammatePinRecord(servedRecordJson) else { return (.pinRecord, cache) }
+    let served = TeammatePin(record: record, mac: servedMac)
+    guard verifyTeammatePin(share: share, athleteAccountId: athleteAccountId, pin: served) else { return (.mac, cache) }
+    guard let cache else { return (.accepted, served) }
+    if served == cache { return (.same, cache) }
+    return served.record.at > cache.record.at ? (.accepted, served) : (.pinOlder, cache)
+  }
+
+  /// The `at` of a pin this phone writes, after fetching and verifying the server's current pin.
+  static func teammatePinWriteAt(nowSeconds: Int64, newestSeenAt: Int64?) -> Int64 {
+    guard let seen = newestSeenAt else { return nowSeconds }
+    return max(nowSeconds, seen + 1)
+  }
+
+  /// The wrap gate, on the newest pin the phone holds. nil means the wrap may go ahead.
+  static func teammateWrapRefusal(share: Data, athleteAccountId: String, pin: TeammatePin?, spki: Data) -> TeammateRefusal? {
+    guard let pin, verifyTeammatePin(share: share, athleteAccountId: athleteAccountId, pin: pin) else { return .unpinned }
+    if pin.record.how == "removed" { return .removed }
+    guard let pinned = hash32(pin.record.spkiSha256), constantTimeEqual(pinned, Data(SHA256.hash(data: spki))) else { return .unpinned }
+    return nil
+  }
+
+  static func constantTimeEqual(_ a: Data, _ b: Data) -> Bool {
+    guard a.count == b.count else { return false }
+    return zip(a, b).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
+  }
+
+  // The Teammate's code: LEAVE-TM1:<athlete>:<teammate>:<SHA-256 of the Teammate's own key>.
+
+  static let teammateCodeVersion = "LEAVE-TM1"
+
+  static func teammateCode(athleteAccountId: String, teammateAccountId: String, ownSpki: Data) -> String? {
+    guard isUlid(athleteAccountId), isUlid(teammateAccountId) else { return nil }
+    return "\(teammateCodeVersion):\(athleteAccountId):\(teammateAccountId):\(base64url(Data(SHA256.hash(data: ownSpki))))"
+  }
+
+  /// nil for a match, else the first failure in order: format, version, athlete, teammate, key.
+  /// The person sees one sentence for each; the reason is for the app's own diagnostics.
+  static func checkTeammateCode(_ text: String, myAccountId: String, teammateAccountId: String, receivedSpki: Data) -> String? {
+    guard !text.isEmpty, text.utf8.allSatisfy({ $0 >= 0x21 && $0 <= 0x7e }) else { return "format" }
+    let parts = text.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+    guard parts.count == 4 else { return "format" }
+    guard parts[0] == teammateCodeVersion else { return "version" }
+    guard isUlid(parts[1]), isUlid(parts[2]), let h = hash32(parts[3]) else { return "format" }
+    guard parts[1] == myAccountId else { return "athlete" }
+    guard parts[2] == teammateAccountId else { return "teammate" }
+    guard constantTimeEqual(h, Data(SHA256.hash(data: receivedSpki))) else { return "key" }
+    return nil
+  }
+
+  // Six digits on a call: A commits, T answers with nT, A reveals nA, both show the digits.
+
+  static let sasCommitLabel = "leave:v1:teammate-sas-commit"
+  static let sasLabel = "leave:v1:teammate-sas"
+
+  struct SasIds {
+    let runId: String
+    let athleteAccountId: String
+    let teammateAccountId: String
+  }
+
+  private static func sasFields(_ ids: SasIds) throws -> [Data] {
+    guard isUlid(ids.runId), isUlid(ids.athleteAccountId), isUlid(ids.teammateAccountId) else { throw TeammateRefusal.sasField }
+    return [Data(ids.runId.utf8), Data(ids.athleteAccountId.utf8), Data(ids.teammateAccountId.utf8)]
+  }
+
+  static func sasCommit(ids: SasIds, teammateSpki: Data, nA: Data) throws -> Data {
+    guard nA.count == 32 else { throw TeammateRefusal.sasField }
+    return Data(SHA256.hash(data: lengthPrefixed([Data(sasCommitLabel.utf8)] + (try sasFields(ids)) + [teammateSpki, nA])))
+  }
+
+  /// The Teammate's phone's check of the revealed nA with its own key: false means no digits.
+  static func sasOpens(ids: SasIds, ownSpki: Data, nA: Data, commitment: Data) throws -> Bool {
+    let c = try sasCommit(ids: ids, teammateSpki: ownSpki, nA: nA)
+    return commitment.count == 32 && constantTimeEqual(c, commitment)
+  }
+
+  /// The first 4 bytes of the hash as an unsigned big-endian number, mod 10^6, as 6 digits.
+  static func sasDigits(ids: SasIds, teammateSpki: Data, nA: Data, nT: Data) throws -> (number: UInt32, digits: String) {
+    guard nA.count == 32, nT.count == 32 else { throw TeammateRefusal.sasField }
+    let d = SHA256.hash(data: lengthPrefixed([Data(sasLabel.utf8)] + (try sasFields(ids)) + [teammateSpki, nA, nT]))
+    let n = d.prefix(4).reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    return (n, String(format: "%06u", n % 1_000_000))
+  }
+
+  /// "482913" → "482 913".
+  static func sasLine(_ digits: String) -> String {
+    "\(digits.prefix(3)) \(digits.dropFirst(3))"
+  }
+
   // MARK: - ASN.1 helpers: Security wants PKCS#1 for RSA keys, the API sends SPKI / PKCS#8
 
   /// SPKI DER → PKCS#1 RSAPublicKey by unwrapping the outer SEQUENCE { AlgorithmIdentifier, BIT STRING }.

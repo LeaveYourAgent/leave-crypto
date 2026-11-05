@@ -13,7 +13,6 @@ RCT_EXTERN_METHOD(accountPublicKey:(NSString *)accountId resolve:(RCTPromiseReso
 RCT_EXTERN_METHOD(newRecordKey:(NSString *)type id:(NSString *)id resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(importShareWrappedDek:(NSString *)type id:(NSString *)id wire:(NSString *)wire resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(importPendingDek:(NSString *)type id:(NSString *)id wire:(NSString *)wire info:(NSString *)info accountId:(NSString *)accountId resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(wrapDekTo:(NSString *)type id:(NSString *)id recipientSpki:(NSString *)recipientSpki info:(NSString *)info resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(encrypt:(NSString *)type id:(NSString *)id plaintext:(NSString *)plaintext resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(decrypt:(NSString *)type id:(NSString *)id wire:(NSString *)wire resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(encryptFile:(NSString *)type id:(NSString *)id srcPath:(NSString *)srcPath dstPath:(NSString *)dstPath resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
