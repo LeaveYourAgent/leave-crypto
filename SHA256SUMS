@@ -12,7 +12,7 @@ b9739ee9c27c766aac3e7c613f7a20b72afedaf24e8993fad961f42079ce28bf  ./android/app-
 70fa201501995e6f45c0c475def71093f8115849344c48322ca997cfddba8534  ./android/gradle/wrapper/gradle-wrapper.properties
 aed171fb114f82e6eaea4970a245a200e0582a7dcc8ec0891ca41b6e4a62b754  ./android/gradlew
 d4774b1a1c61cc10d09514462b13016d6088bd20db96107e82a05d9b13e24b8b  ./android/settings.gradle.kts
-29c9fb202b75eb4795a482413022687f5bfd7ae280dc4cd3ece3f86251146d81  ./android/src/main/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoCore.kt
+3c4a5097b191fdd92e6a1816a6f8fb9fafe19e1db33eea21be195dec2f1c6788  ./android/src/main/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoCore.kt
 68590cf0cda03f24860b9d0c34335a7208e9fd5bc5940ae3e370dc0ba8ef4b30  ./android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoCrossCheck.kt
 22a0f11dd24b2eb7b536f8671c8346895a9dfde508f4e9687f514c32935b01f5  ./android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoVectors.kt
 a90ebeb7d24391eb670bc863997ce4d99202625399606fd9dfaea361acbf6ac1  ./android/src/test/kotlin/com/leaveyouragent/leave/crypto/LeaveCryptoVectorsTest.kt
@@ -21,12 +21,14 @@ a90ebeb7d24391eb670bc863997ce4d99202625399606fd9dfaea361acbf6ac1  ./android/src/
 38b50007daec3d48a5f7eb9939112e180ae0be713f02531b7b4891fa1033dfd3  ./cross-check/server-crypto.mjs
 cda677ba1104abf6b85f131e1967ba3871eab7d7eaa130960eb553827a3acc8e  ./cross-check/server.mjs
 59be4b800a0a9791e1131d63d5d8070f8fd4ed98701585717d8f700e732083e2  ./ios/app-bridge/LeaveCrypto.m
-a7a30916c293aae8090a2c8b56a9fed447b087082610df4a46dc3acecd4ca89b  ./ios/app-bridge/LeaveCrypto.swift
+6bc5fd217d1870846a81591b6ecee363f265303532c1bc0b590e726b52996f04  ./ios/app-bridge/LeaveCrypto.swift
 99e3ae9c276fc1f78db7696239a0dd882dca35468a269b1a0b46cb7a3633a680  ./ios/app-bridge/LeaveDeviceKey.m
 4f8eb37a6dc59f9b7bb89e7bee411d61a3656429e759867ddc2345f1696f8734  ./ios/app-bridge/LeaveDeviceKey.swift
+ae5137c608e59a269e594f13100775c47cb759fc25745aca64f98d27cdcc43b9  ./ios/app-bridge/LeaveTeammate.m
+6aa05889497454985e29834dd09c0b79f6627314487f2aa5a82c670a753c6d29  ./ios/app-bridge/LeaveTeammate.swift
 7e3ff4f7f18db54b66a53367d56ce50934bbf2432358f4a83a1091afc95da5cc  ./ios/Package.resolved
 7d1808347b3801149c3859dfea6c13e152b15db44eeed3602a52273ed2ce647d  ./ios/Package.swift
-ee8bad2b944dcf1fb4e24451bf0db70fda3cf805accfa96a106688ca2c3733b0  ./ios/Sources/LeaveCryptoCore/LeaveCryptoCore.swift
+8f7aa27c368c05f5e22987398d282aaadbb0cbc25c093612f7500df58cb26897  ./ios/Sources/LeaveCryptoCore/LeaveCryptoCore.swift
 3c93d35fa0c852888b90b881108e59101fd46ac1daa7595961240298abe8d002  ./ios/Tests/LeaveCryptoCoreTests/LeaveCryptoTests.swift
 e7d0efb4693ae2a608174a0cb6678d1f3389e8467e801f9184f00db8f483b225  ./js/crypto.ts
 c2892767f48a217f7922edd636a6742186075068a5500b2822570e497a33035a  ./js/grant.ts
@@ -35,7 +37,7 @@ cf41cbb903f27d4c2fe45ad0037cfcb2ea85754394c09ab15b9d7423106b1180  ./js/keys.ts
 eca6773c5d8eb95afa7ec709ea448509f518a2bbd6ab24d05f3997bc3a7adf14  ./js/talkKeys.ts
 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  ./LICENSE
 6f5a2e16b756e8eb2bb246ef6cfdf9369d4359ad882702d6c219d9529763d40c  ./NOTICE
-339b49e158668287a65bab5ff5fe24fcbbb4ca898bd54d399b02143f1a1536d2  ./README.md
+11404fc709525b6231643e5560bf5892732957c53241ec8cbebf56207160af2e  ./README.md
 990568ae7b107be252ce1d118c51bb55f0ffa4c130cd7ecce185484aae337fda  ./SECURITY.md
 aa7c2b313c206e34cb5db1d1572042817c914f97938d983a076967a8cfa97ad1  ./teammate/check.mjs
 50f7a014404eb4c09c60d4ac2fbf1880d7395272fde460e9f9bf98f0aff98694  ./teammate/generate.mjs

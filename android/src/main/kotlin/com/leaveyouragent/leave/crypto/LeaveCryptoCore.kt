@@ -471,7 +471,7 @@ object LeaveCryptoCore {
     return "%06d".format(number % 1_000_000)
   }
 
-  // Teammate key (teammate-v1.json; P3-3 4.2–4.4), function for function the Swift: the pin, the
+  // Teammate key (teammate-v1.json), function for function the Swift: the pin, the
   // Teammate's code and six digits on a call.
 
   /** Why a Teammate step was refused; the text is the vectors' name for it. */

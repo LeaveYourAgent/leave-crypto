@@ -21,7 +21,7 @@ import Security
 ///   newRecordKey(type, id)                           → { shareWrappedDek }
 ///   importShareWrappedDek(type, id, wire)            → true
 ///   importPendingDek(type, id, wire, info, accountId)→ { shareWrappedDek }   (HPKE to the account key)
-///   (The Teammate wrap is LeaveTeammate's wrapDekToTeammate, only under the pin: P3-3.)
+///   (The Teammate wrap is LeaveTeammate's wrapDekToTeammate, only under the pin.)
 ///   encrypt(type, id, plaintext) / decrypt(type, id, wire)
 ///   encryptFile(type, id, srcPath, dstPath)          → { sha256, sizeBytes }
 ///   decryptFile(type, id, srcPath, dstPath)          → { sizeBytes }

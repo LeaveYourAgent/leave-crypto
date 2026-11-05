@@ -325,7 +325,7 @@ enum LeaveCryptoCore {
     return Data(base64Encoded: b)
   }
 
-  // MARK: - Teammate key (teammate-v1.json; P3-3 4.2–4.4)
+  // MARK: - Teammate key (teammate-v1.json)
   //
   // Three things the athlete's phone and the Teammate's phone check between themselves, so the
   // server can't put another key in the Teammate's place: the pin (the key the athlete's phone
